@@ -1,0 +1,1 @@
+ALTER TABLE "deposit_bank_destination" ADD COLUMN "virtual_account_expires_at" text;

@@ -1,0 +1,2960 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Skyewallet Business API",
+    "version": "1.0.0",
+    "description": "Payment infrastructure for African businesses \u2014 accept, send, and settle crypto and fiat payments via a single REST API.\n\nAll endpoints are under `/v1/`. Authenticate with your secret API key in the `Authorization` header.",
+    "contact": {
+      "name": "Skyewallet Business Support",
+      "url": "https://skyewallet.com"
+    },
+    "servers": [
+      {
+        "url": "https://pay.skyewallet.com",
+        "description": "Production"
+      },
+      {
+        "url": "https://test--pay.skyewallet.com",
+        "description": "Test"
+      }
+    ],
+    "security": [
+      {
+        "ApiKeyAuth": []
+      }
+    ],
+    "components": {
+      "securitySchemes": {
+        "ApiKeyAuth": {
+          "type": "http",
+          "scheme": "bearer",
+          "description": "Your secret API key (`sk_live_...` or `sk_test_...`). Never expose this client-side."
+        }
+      },
+      "schemas": {
+        "Customer": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "cus_01j..."
+            },
+            "first_name": {
+              "type": "string",
+              "example": "Ada"
+            },
+            "last_name": {
+              "type": "string",
+              "example": "Okonkwo"
+            },
+            "email": {
+              "type": "string",
+              "nullable": true,
+              "example": "ada@example.com"
+            },
+            "phone": {
+              "type": "string",
+              "nullable": true,
+              "example": "+2348012345678"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2026-05-11T10:00:00Z"
+            }
+          }
+        },
+        "CryptoAccount": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "acc_01j..."
+            },
+            "type": {
+              "type": "string",
+              "enum": ["static", "dynamic"]
+            },
+            "status": {
+              "type": "string",
+              "enum": ["active", "fulfilled", "expired"]
+            },
+            "address": {
+              "type": "string",
+              "example": "TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            },
+            "amount_requested": {
+              "type": "string",
+              "nullable": true,
+              "example": "100.000000"
+            },
+            "amount_received": {
+              "type": "string",
+              "nullable": true,
+              "example": "0.000000"
+            },
+            "expires_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "NGNAccount": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "acc_01j..."
+            },
+            "type": {
+              "type": "string",
+              "enum": ["static"]
+            },
+            "status": {
+              "type": "string",
+              "enum": ["active"]
+            },
+            "bank_name": {
+              "type": "string",
+              "example": "Wema Bank"
+            },
+            "account_number": {
+              "type": "string",
+              "example": "9901234567"
+            },
+            "account_name": {
+              "type": "string",
+              "example": "Skyewallet Business / Acme Ltd"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "Transfer": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "tfr_01j..."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "processing",
+                "completed",
+                "failed",
+                "reversed"
+              ]
+            },
+            "client_reference": {
+              "type": "string",
+              "nullable": true,
+              "example": "payout_2026_05_11_001"
+            },
+            "currency": {
+              "type": "string",
+              "example": "USDT"
+            },
+            "network": {
+              "type": "string",
+              "example": "TRX",
+              "nullable": true
+            },
+            "amount": {
+              "type": "string",
+              "example": "250.000000"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "completed_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            }
+          }
+        },
+        "Swap": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "swp_01j..."
+            },
+            "status": {
+              "type": "string",
+              "enum": ["quoted", "executed", "failed", "expired"]
+            },
+            "from_currency": {
+              "type": "string",
+              "example": "USDT"
+            },
+            "to_currency": {
+              "type": "string",
+              "example": "NGN"
+            },
+            "from_amount": {
+              "type": "string",
+              "example": "100.000000"
+            },
+            "to_amount": {
+              "type": "string",
+              "example": "162750.00"
+            },
+            "rate": {
+              "type": "string",
+              "example": "1627.50"
+            },
+            "fee": {
+              "type": "string",
+              "example": "0.500000"
+            },
+            "executed_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            }
+          }
+        },
+        "Transaction": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "txn_01j..."
+            },
+            "type": {
+              "type": "string",
+              "enum": ["payin", "payout", "swap", "settlement"]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "processing",
+                "completed",
+                "failed",
+                "reversed"
+              ]
+            },
+            "client_reference": {
+              "type": "string",
+              "nullable": true,
+              "example": "payout_2026_05_11_001"
+            },
+            "currency": {
+              "type": "string",
+              "example": "USDT"
+            },
+            "network": {
+              "type": "string",
+              "example": "TRX",
+              "nullable": true
+            },
+            "amount": {
+              "type": "string",
+              "example": "100.000000"
+            },
+            "customer_id": {
+              "type": "string",
+              "nullable": true,
+              "example": "cus_01j..."
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "completed_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            }
+          }
+        },
+        "Wallet": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "wlt_01j..."
+            },
+            "currency": {
+              "type": "string",
+              "example": "USDT"
+            },
+            "balance": {
+              "type": "string",
+              "example": "5000.000000"
+            },
+            "pending_balance": {
+              "type": "string",
+              "example": "0.000000"
+            },
+            "enabled": {
+              "type": "boolean",
+              "example": true
+            }
+          }
+        },
+        "Rate": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "example": "USDT"
+            },
+            "to": {
+              "type": "string",
+              "example": "NGN"
+            },
+            "rate": {
+              "type": "string",
+              "example": "1627.50"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["buy", "sell"]
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "SwapPair": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "sp_01j..."
+            },
+            "from_currency": {
+              "type": "string",
+              "example": "USDT"
+            },
+            "to_currency": {
+              "type": "string",
+              "example": "NGN"
+            }
+          }
+        },
+        "CurrencyNetwork": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "net_01j..."
+            },
+            "code": {
+              "type": "string",
+              "example": "TRX"
+            },
+            "name": {
+              "type": "string",
+              "example": "Tron"
+            },
+            "deposit_enabled": {
+              "type": "boolean",
+              "example": true
+            },
+            "withdrawal_enabled": {
+              "type": "boolean",
+              "example": true
+            },
+            "contract_address": {
+              "type": "string",
+              "nullable": true,
+              "example": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+            },
+            "decimals": {
+              "type": "integer",
+              "nullable": true,
+              "example": 6
+            }
+          }
+        },
+        "EnabledCurrency": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "cur_01j..."
+            },
+            "code": {
+              "type": "string",
+              "example": "USDT"
+            },
+            "name": {
+              "type": "string",
+              "example": "Tether USD"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["crypto", "fiat"],
+              "example": "crypto"
+            },
+            "decimals": {
+              "type": "integer",
+              "example": 6
+            },
+            "deposit_enabled": {
+              "type": "boolean",
+              "example": true
+            },
+            "withdrawal_enabled": {
+              "type": "boolean",
+              "example": true
+            },
+            "swap_enabled": {
+              "type": "boolean",
+              "example": true
+            },
+            "networks": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/CurrencyNetwork"
+              }
+            }
+          }
+        },
+        "Bank": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "bnk_01j..."
+            },
+            "name": {
+              "type": "string",
+              "example": "Wema Bank"
+            },
+            "slug": {
+              "type": "string",
+              "example": "wema-bank"
+            },
+            "countryCode": {
+              "type": "string",
+              "example": "NG"
+            }
+          }
+        },
+        "Error": {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "example": "insufficient_balance"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Your USDT wallet does not have enough balance."
+                },
+                "param": {
+                  "type": "string",
+                  "nullable": true,
+                  "example": "amount"
+                }
+              }
+            }
+          }
+        },
+        "PaginationMeta": {
+          "type": "object",
+          "properties": {
+            "cursor": {
+              "type": "string",
+              "nullable": true,
+              "example": "cursor_abc..."
+            },
+            "has_more": {
+              "type": "boolean",
+              "example": true
+            }
+          }
+        },
+        "SandboxBankTransfer": {
+          "type": "object",
+          "properties": {
+            "inbox_event_id": {
+              "type": "string",
+              "example": "evt_01j..."
+            },
+            "status": {
+              "type": "string",
+              "example": "pending"
+            },
+            "amount": {
+              "type": "string",
+              "example": "5000.00"
+            },
+            "currency": {
+              "type": "string",
+              "example": "NGN"
+            },
+            "network": {
+              "type": "string",
+              "nullable": true
+            },
+            "external_reference": {
+              "type": "string",
+              "example": "sandbox_abc..."
+            },
+            "simulation_type": {
+              "type": "string",
+              "example": "webhook_injected"
+            }
+          }
+        },
+        "SandboxCryptoTransfer": {
+          "type": "object",
+          "properties": {
+            "tx_hash": {
+              "type": "string",
+              "example": "abc123..."
+            },
+            "status": {
+              "type": "string",
+              "example": "sent"
+            },
+            "amount": {
+              "type": "string",
+              "example": "10.00"
+            },
+            "currency": {
+              "type": "string",
+              "example": "USDT"
+            },
+            "network": {
+              "type": "string",
+              "example": "TRX"
+            },
+            "external_reference": {
+              "type": "string",
+              "example": "abc123..."
+            },
+            "simulation_type": {
+              "type": "string",
+              "example": "crypto_sent"
+            }
+          }
+        },
+        "Payin": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "pin_01j..."
+            },
+            "status": {
+              "type": "string",
+              "enum": ["pending", "processing", "completed", "failed"],
+              "example": "pending"
+            },
+            "method": {
+              "type": "string",
+              "enum": ["crypto", "bank_transfer", "momo"],
+              "example": "crypto"
+            },
+            "customer_id": {
+              "type": "string",
+              "example": "cus_01j..."
+            },
+            "currency": {
+              "type": "string",
+              "example": "USDT"
+            },
+            "network": {
+              "type": "string",
+              "nullable": true,
+              "example": "TRX"
+            },
+            "amount": {
+              "type": "string",
+              "nullable": true,
+              "example": "100.000000"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "Payout": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "pyt_01j..."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "processing",
+                "completed",
+                "failed",
+                "reversed"
+              ],
+              "example": "pending"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["crypto", "fiat", "momo"],
+              "example": "crypto"
+            },
+            "currency": {
+              "type": "string",
+              "example": "USDT"
+            },
+            "network": {
+              "type": "string",
+              "nullable": true,
+              "example": "TRX"
+            },
+            "amount": {
+              "type": "string",
+              "example": "250.000000"
+            },
+            "totalFee": {
+              "type": "string",
+              "example": "1.500000"
+            },
+            "customer_id": {
+              "type": "string",
+              "nullable": true,
+              "example": "cus_01j..."
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "completed_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            }
+          }
+        },
+        "SupportedMomoNetwork": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "example": "mno_01j..."
+            },
+            "name": {
+              "type": "string",
+              "example": "MTN Mobile Money"
+            },
+            "code": {
+              "type": "string",
+              "example": "mtn"
+            },
+            "country_code": {
+              "type": "string",
+              "example": "GH"
+            },
+            "currency": {
+              "type": "string",
+              "example": "GHS"
+            },
+            "collection_enabled": {
+              "type": "boolean",
+              "example": true
+            },
+            "payout_enabled": {
+              "type": "boolean",
+              "example": true
+            }
+          }
+        }
+      },
+      "parameters": {
+        "CursorParam": {
+          "in": "query",
+          "name": "cursor",
+          "schema": {
+            "type": "string"
+          },
+          "description": "Opaque pagination cursor from the previous response"
+        },
+        "LimitParam": {
+          "in": "query",
+          "name": "limit",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "description": "Max results per page (1\u2013100)"
+        }
+      }
+    },
+    "paths": {
+      "/v1/wallets": {
+        "get": {
+          "operationId": "listWallets",
+          "summary": "List wallets",
+          "description": "List all wallets for your business with current balances.",
+          "tags": ["Wallets"],
+          "responses": {
+            "200": {
+              "description": "List of wallets",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "wallets": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/Wallet"
+                        }
+                      }
+                    }
+                  },
+                  "example": {
+                    "wallets": [
+                      {
+                        "id": "wlt_01j...",
+                        "currency": "USDT",
+                        "balance": "5000.000000",
+                        "pending_balance": "0.000000",
+                        "enabled": true
+                      },
+                      {
+                        "id": "wlt_01j...",
+                        "currency": "NGN",
+                        "balance": "250000.00",
+                        "pending_balance": "0.00",
+                        "enabled": true
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/wallets/allowed-currencies": {
+        "get": {
+          "operationId": "listWalletAllowedCurrencies",
+          "summary": "List wallet allowed currencies",
+          "description": "List currencies the business can create wallets for.",
+          "tags": ["Wallets"],
+          "responses": {
+            "200": {
+              "description": "Allowed currencies",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "currencies": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/EnabledCurrency"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/customers": {
+        "post": {
+          "operationId": "createCustomer",
+          "summary": "Create a customer",
+          "tags": ["Customers"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["first_name", "last_name"],
+                  "properties": {
+                    "first_name": {
+                      "type": "string",
+                      "example": "Ada"
+                    },
+                    "last_name": {
+                      "type": "string",
+                      "example": "Okonkwo"
+                    },
+                    "email": {
+                      "type": "string",
+                      "example": "ada@example.com"
+                    },
+                    "phone": {
+                      "type": "string",
+                      "example": "+2348012345678"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "example": {
+                        "user_id": "usr-42"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Customer created",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "customer": {
+                        "$ref": "#/components/schemas/Customer"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Validation error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "get": {
+          "operationId": "listCustomers",
+          "summary": "List customers",
+          "tags": ["Customers"],
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/CursorParam"
+            },
+            {
+              "$ref": "#/components/parameters/LimitParam"
+            },
+            {
+              "in": "query",
+              "name": "name",
+              "schema": {
+                "type": "string"
+              },
+              "description": "Partial name filter"
+            },
+            {
+              "in": "query",
+              "name": "email",
+              "schema": {
+                "type": "string"
+              },
+              "description": "Exact email filter"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Paginated customer list",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "customers": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/Customer"
+                        }
+                      },
+                      "meta": {
+                        "$ref": "#/components/schemas/PaginationMeta"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/customers/{id}": {
+        "get": {
+          "operationId": "getCustomer",
+          "summary": "Get a customer",
+          "tags": ["Customers"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Customer ID"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Customer object",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "customer": {
+                        "$ref": "#/components/schemas/Customer"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "patch": {
+          "operationId": "updateCustomer",
+          "summary": "Update a customer",
+          "tags": ["Customers"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "first_name": {
+                      "type": "string"
+                    },
+                    "last_name": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Updated customer",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "customer": {
+                        "$ref": "#/components/schemas/Customer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "delete": {
+          "operationId": "deleteCustomer",
+          "summary": "Delete a customer",
+          "tags": ["Customers"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Deleted",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "deleted": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/customers/{id}/accounts": {
+        "post": {
+          "operationId": "createCustomerAccount",
+          "summary": "Create a customer account",
+          "description": "Create a crypto deposit address or NGN virtual bank account for a customer.",
+          "tags": ["Customers"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Customer ID"
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["type", "currency"],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["static", "dynamic"],
+                      "description": "`dynamic` for one-time payment with expiry; `static` for permanent reusable address"
+                    },
+                    "currency": {
+                      "type": "string",
+                      "enum": ["USDT", "USDC", "NGN"]
+                    },
+                    "network": {
+                      "type": "string",
+                      "enum": ["TRX", "SOL"],
+                      "description": "Required for crypto currencies"
+                    },
+                    "amount": {
+                      "type": "string",
+                      "description": "Required for dynamic accounts. Expected payment total.",
+                      "example": "100.000000"
+                    },
+                    "expiry_minutes": {
+                      "type": "integer",
+                      "minimum": 30,
+                      "maximum": 1440,
+                      "default": 60,
+                      "description": "TTL for dynamic accounts"
+                    }
+                  }
+                },
+                "examples": {
+                  "dynamic_crypto": {
+                    "summary": "Dynamic USDT/TRX account",
+                    "value": {
+                      "type": "dynamic",
+                      "currency": "USDT",
+                      "network": "TRX",
+                      "amount": "100.000000",
+                      "expiry_minutes": 30
+                    }
+                  },
+                  "static_crypto": {
+                    "summary": "Static USDT/TRX account",
+                    "value": {
+                      "type": "static",
+                      "currency": "USDT",
+                      "network": "TRX"
+                    }
+                  },
+                  "static_ngn": {
+                    "summary": "Static NGN virtual account",
+                    "value": {
+                      "type": "static",
+                      "currency": "NGN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Account created",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "asset": {
+                        "type": "object"
+                      },
+                      "account": {
+                        "oneOf": [
+                          {
+                            "$ref": "#/components/schemas/CryptoAccount"
+                          },
+                          {
+                            "$ref": "#/components/schemas/NGNAccount"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "get": {
+          "operationId": "listCustomerAccounts",
+          "summary": "List customer accounts",
+          "tags": ["Customers"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "$ref": "#/components/parameters/CursorParam"
+            },
+            {
+              "$ref": "#/components/parameters/LimitParam"
+            },
+            {
+              "in": "query",
+              "name": "status",
+              "schema": {
+                "type": "string",
+                "enum": ["active", "fulfilled", "expired"]
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Paginated account list",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "accounts": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "meta": {
+                        "$ref": "#/components/schemas/PaginationMeta"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/swap/quote": {
+        "post": {
+          "operationId": "createSwapQuote",
+          "summary": "Get a swap quote",
+          "description": "Get a locked exchange rate. Valid for 30 seconds.",
+          "tags": ["Swaps"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["from_currency", "to_currency", "from_amount"],
+                  "properties": {
+                    "from_currency": {
+                      "type": "string",
+                      "example": "USDT"
+                    },
+                    "to_currency": {
+                      "type": "string",
+                      "example": "NGN"
+                    },
+                    "from_amount": {
+                      "type": "string",
+                      "example": "100.000000"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Swap quote",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "quote_id": {
+                        "type": "string",
+                        "example": "qt_01j..."
+                      },
+                      "from_currency": {
+                        "type": "string"
+                      },
+                      "to_currency": {
+                        "type": "string"
+                      },
+                      "from_amount": {
+                        "type": "string"
+                      },
+                      "to_amount": {
+                        "type": "string",
+                        "example": "162750.00"
+                      },
+                      "rate": {
+                        "type": "string",
+                        "example": "1627.50"
+                      },
+                      "fee": {
+                        "type": "string",
+                        "example": "0.500000"
+                      },
+                      "fee_currency": {
+                        "type": "string"
+                      },
+                      "expires_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/swap/execute": {
+        "post": {
+          "operationId": "executeSwap",
+          "summary": "Execute a swap",
+          "description": "Execute a previously obtained quote. Quote must not have expired.",
+          "tags": ["Swaps"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["quote_id"],
+                  "properties": {
+                    "quote_id": {
+                      "type": "string",
+                      "example": "qt_01j..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Swap executed",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Swap"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Quote expired or swap pair disabled",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/swaps": {
+        "get": {
+          "operationId": "listSwaps",
+          "summary": "List swaps",
+          "tags": ["Swaps"],
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/CursorParam"
+            },
+            {
+              "$ref": "#/components/parameters/LimitParam"
+            },
+            {
+              "in": "query",
+              "name": "status",
+              "schema": {
+                "type": "string",
+                "enum": ["executed", "failed", "expired"]
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Paginated swap list",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/Swap"
+                        }
+                      },
+                      "meta": {
+                        "$ref": "#/components/schemas/PaginationMeta"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/swaps/{id}": {
+        "get": {
+          "operationId": "getSwap",
+          "summary": "Get a swap",
+          "tags": ["Swaps"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Swap object",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Swap"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/rates": {
+        "get": {
+          "operationId": "getRate",
+          "summary": "Get a live rate",
+          "tags": ["Rates"],
+          "parameters": [
+            {
+              "in": "query",
+              "name": "from",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Source currency (e.g. `USDT`)"
+            },
+            {
+              "in": "query",
+              "name": "to",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Target currency (e.g. `NGN`)"
+            },
+            {
+              "in": "query",
+              "name": "type",
+              "schema": {
+                "type": "string",
+                "enum": ["buy", "sell"]
+              },
+              "description": "Rate type (default: `buy`)"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Live rate",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Rate"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/rates/batch": {
+        "get": {
+          "operationId": "getBatchRates",
+          "summary": "Get rates for multiple pairs",
+          "tags": ["Rates"],
+          "parameters": [
+            {
+              "in": "query",
+              "name": "currencies",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Comma-separated currency codes (e.g. `USDT,NGN`)"
+            },
+            {
+              "in": "query",
+              "name": "type",
+              "schema": {
+                "type": "string",
+                "enum": ["buy", "sell"]
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Batch rates",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "pairs": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/Rate"
+                        }
+                      },
+                      "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/rates/history": {
+        "get": {
+          "operationId": "getRateHistory",
+          "summary": "Get rate history",
+          "tags": ["Rates"],
+          "parameters": [
+            {
+              "in": "query",
+              "name": "from",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "to",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "type",
+              "schema": {
+                "type": "string",
+                "enum": ["buy", "sell"]
+              }
+            },
+            {
+              "in": "query",
+              "name": "limit",
+              "schema": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "default": 100
+              }
+            },
+            {
+              "in": "query",
+              "name": "before",
+              "schema": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Historical rates",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/Rate"
+                        }
+                      },
+                      "next_before": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/transactions": {
+        "get": {
+          "operationId": "listTransactions",
+          "summary": "List transactions",
+          "tags": ["Transactions"],
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/CursorParam"
+            },
+            {
+              "$ref": "#/components/parameters/LimitParam"
+            },
+            {
+              "in": "query",
+              "name": "type",
+              "schema": {
+                "type": "string",
+                "enum": ["payin", "payout", "swap", "settlement"]
+              }
+            },
+            {
+              "in": "query",
+              "name": "status",
+              "schema": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "processing",
+                  "completed",
+                  "failed",
+                  "reversed"
+                ]
+              }
+            },
+            {
+              "in": "query",
+              "name": "currency",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "from",
+              "schema": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            {
+              "in": "query",
+              "name": "to",
+              "schema": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Paginated transaction list",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/Transaction"
+                        }
+                      },
+                      "meta": {
+                        "$ref": "#/components/schemas/PaginationMeta"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/transactions/{id}": {
+        "get": {
+          "operationId": "getTransaction",
+          "summary": "Get a transaction",
+          "tags": ["Transactions"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Transaction object",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "transaction": {
+                        "$ref": "#/components/schemas/Transaction"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/webhooks": {
+        "get": {
+          "operationId": "listWebhookDeliveries",
+          "summary": "List webhook deliveries",
+          "tags": ["Webhooks"],
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/CursorParam"
+            },
+            {
+              "$ref": "#/components/parameters/LimitParam"
+            },
+            {
+              "in": "query",
+              "name": "status",
+              "schema": {
+                "type": "string",
+                "enum": ["pending", "delivered", "failed", "dead"]
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Paginated delivery list",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "event": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "attempt_count": {
+                              "type": "integer"
+                            },
+                            "last_attempt_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "created_at": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        }
+                      },
+                      "meta": {
+                        "$ref": "#/components/schemas/PaginationMeta"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/webhooks/{id}": {
+        "get": {
+          "operationId": "getWebhookDelivery",
+          "summary": "Get a webhook delivery",
+          "tags": ["Webhooks"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Delivery with payload and attempt history"
+            }
+          }
+        }
+      },
+      "/v1/swap-pairs": {
+        "get": {
+          "operationId": "listSwapPairs",
+          "summary": "List swap pairs",
+          "description": "List all enabled currency pairs available for swapping.",
+          "tags": ["Reference"],
+          "responses": {
+            "200": {
+              "description": "Enabled swap pairs",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "swap_pairs": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/SwapPair"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/currencies": {
+        "get": {
+          "operationId": "listCurrencies",
+          "summary": "List enabled currencies",
+          "description": "Returns all active allowlisted currencies. Crypto entries include supported networks.",
+          "tags": ["Reference"],
+          "responses": {
+            "200": {
+              "description": "Enabled currencies",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "currencies": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/EnabledCurrency"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/currencies/fiat": {
+        "get": {
+          "operationId": "listFiatCurrencies",
+          "summary": "List fiat currencies",
+          "description": "List all enabled fiat currencies your business can use.",
+          "tags": ["Reference"],
+          "responses": {
+            "200": {
+              "description": "Enabled fiat currencies",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "currencies": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/EnabledCurrency"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/currencies/crypto": {
+        "get": {
+          "operationId": "listCryptoCurrencies",
+          "summary": "List crypto currencies",
+          "description": "List all enabled crypto currencies with supported networks.",
+          "tags": ["Reference"],
+          "responses": {
+            "200": {
+              "description": "Enabled crypto currencies",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "currencies": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/EnabledCurrency"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/momo/supported/{operation_mode}": {
+        "get": {
+          "operationId": "listSupportedMomo",
+          "summary": "List supported mobile money networks",
+          "description": "List supported mobile money networks for collection or payout.",
+          "tags": ["MobileMoney"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "operation_mode",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "enum": ["collection", "payout"]
+              },
+              "description": "Operation mode"
+            },
+            {
+              "in": "query",
+              "name": "country_code",
+              "schema": {
+                "type": "string"
+              },
+              "description": "2-letter ISO country code filter"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Supported mobile money networks",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "supported_momo": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/SupportedMomoNetwork"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/payin": {
+        "post": {
+          "operationId": "createPayin",
+          "summary": "Create a payin",
+          "description": "Create a payin (payment collection point) using crypto, bank_transfer, or mobile money method.",
+          "tags": ["Payins"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["method", "customer_id"],
+                  "properties": {
+                    "method": {
+                      "type": "string",
+                      "enum": ["crypto", "bank_transfer", "momo"],
+                      "description": "Payment method"
+                    },
+                    "customer_id": {
+                      "type": "string",
+                      "example": "cus_01j..."
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["static", "dynamic"],
+                      "description": "Account type (crypto and bank_transfer)"
+                    },
+                    "currency": {
+                      "type": "string",
+                      "example": "USDT"
+                    },
+                    "network": {
+                      "type": "string",
+                      "example": "TRX",
+                      "description": "Required for crypto and momo"
+                    },
+                    "amount": {
+                      "type": "string",
+                      "example": "100.000000",
+                      "description": "Required for dynamic accounts"
+                    },
+                    "country_code": {
+                      "type": "string",
+                      "example": "GH",
+                      "description": "Required for momo"
+                    },
+                    "phone_number": {
+                      "type": "string",
+                      "example": "+233501234567",
+                      "description": "Required for momo"
+                    },
+                    "holder_ip_address": {
+                      "type": "string",
+                      "example": "192.168.1.1",
+                      "description": "Required for momo"
+                    },
+                    "holder_device_tag": {
+                      "type": "string",
+                      "example": "device-001",
+                      "description": "Required for momo"
+                    },
+                    "trx_activation_mode": {
+                      "type": "string",
+                      "enum": ["business", "user"],
+                      "description": "Crypto-specific: TRX activation mode"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Payin created",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "payin": {
+                        "$ref": "#/components/schemas/Payin"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/payins": {
+        "get": {
+          "operationId": "listPayins",
+          "summary": "List payins",
+          "description": "List payment collection points with optional filters.",
+          "tags": ["Payins"],
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/CursorParam"
+            },
+            {
+              "$ref": "#/components/parameters/LimitParam"
+            },
+            {
+              "in": "query",
+              "name": "customer_id",
+              "schema": {
+                "type": "string"
+              },
+              "description": "Filter by customer ID"
+            },
+            {
+              "in": "query",
+              "name": "status",
+              "schema": {
+                "type": "string",
+                "enum": ["pending", "processing", "completed", "failed"]
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Paginated payin list",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/Payin"
+                        }
+                      },
+                      "meta": {
+                        "$ref": "#/components/schemas/PaginationMeta"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/payins/{id}": {
+        "get": {
+          "operationId": "getPayin",
+          "summary": "Get a payin",
+          "description": "Get a single payment collection point by ID.",
+          "tags": ["Payins"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Payin ID"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Payin object",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "payin": {
+                        "$ref": "#/components/schemas/Payin"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/payouts": {
+        "post": {
+          "operationId": "createPayout",
+          "summary": "Initiate a payout",
+          "description": "Send funds to a customer via crypto, fiat, or mobile money.",
+          "tags": ["Payouts"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["type", "amount", "currency"],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["crypto", "fiat", "momo"],
+                      "description": "Payout type"
+                    },
+                    "amount": {
+                      "type": "string",
+                      "example": "250.000000"
+                    },
+                    "currency": {
+                      "type": "string",
+                      "example": "USDT"
+                    },
+                    "address": {
+                      "type": "string",
+                      "example": "TK6L3...",
+                      "description": "Required for crypto"
+                    },
+                    "network": {
+                      "type": "string",
+                      "example": "TRX",
+                      "description": "Required for crypto and momo"
+                    },
+                    "bank_code": {
+                      "type": "string",
+                      "example": "057",
+                      "description": "Required for fiat"
+                    },
+                    "account_number": {
+                      "type": "string",
+                      "example": "0123456789",
+                      "description": "Required for fiat"
+                    },
+                    "account_name": {
+                      "type": "string",
+                      "example": "Ada Lovelace",
+                      "description": "Optional for fiat, required for momo"
+                    },
+                    "phone_number": {
+                      "type": "string",
+                      "example": "+233501234567",
+                      "description": "Required for momo"
+                    },
+                    "country_code": {
+                      "type": "string",
+                      "example": "GH",
+                      "description": "Required for momo"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Payout initiated",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "payout": {
+                        "$ref": "#/components/schemas/Payout"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "get": {
+          "operationId": "listPayouts",
+          "summary": "List payouts",
+          "description": "List payouts with optional filters.",
+          "tags": ["Payouts"],
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/CursorParam"
+            },
+            {
+              "$ref": "#/components/parameters/LimitParam"
+            },
+            {
+              "in": "query",
+              "name": "status",
+              "schema": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "processing",
+                  "completed",
+                  "failed",
+                  "reversed"
+                ]
+              }
+            },
+            {
+              "in": "query",
+              "name": "currency",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "from",
+              "schema": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            {
+              "in": "query",
+              "name": "to",
+              "schema": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Paginated payout list",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "data": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/Payout"
+                        }
+                      },
+                      "meta": {
+                        "$ref": "#/components/schemas/PaginationMeta"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/payouts/{id}": {
+        "get": {
+          "operationId": "getPayout",
+          "summary": "Get a payout",
+          "description": "Get a single payout by ID.",
+          "tags": ["Payouts"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Payout ID"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Payout object",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "payout": {
+                        "$ref": "#/components/schemas/Payout"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/banks/{country_code}": {
+        "get": {
+          "operationId": "listBanks",
+          "summary": "List supported banks",
+          "description": "List all supported banks available for fiat payouts.",
+          "tags": ["Reference"],
+          "parameters": [
+            {
+              "name": "country_code",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "example": "NG"
+              },
+              "description": "2-letter ISO 3166-1 country code"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Supported banks",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "banks": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/Bank"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/resolve-bank-account": {
+        "post": {
+          "operationId": "resolveBankAccount",
+          "summary": "Verify a bank account",
+          "description": "Resolves the account name for a bank account number using the active fiat provider. Use this to verify a bank account exists before initiating a payout.",
+          "tags": ["Reference"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["country_code", "bank_code", "account_number"],
+                  "properties": {
+                    "country_code": {
+                      "type": "string",
+                      "example": "NG",
+                      "description": "2-letter ISO 3166-1 country code"
+                    },
+                    "bank_code": {
+                      "type": "string",
+                      "example": "000001"
+                    },
+                    "account_number": {
+                      "type": "string",
+                      "example": "0123456789"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Account name resolved",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "account_name": {
+                            "type": "string",
+                            "example": "John Doe"
+                          },
+                          "country_code": {
+                            "type": "string",
+                            "example": "NG"
+                          },
+                          "bank_code": {
+                            "type": "string",
+                            "example": "000001"
+                          },
+                          "account_number": {
+                            "type": "string",
+                            "example": "0123456789"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/validate-customer": {
+        "post": {
+          "operationId": "validateCustomer",
+          "summary": "Validate a customer (BVN or bank account)",
+          "description": "Validates a customer using either BVN resolution (sync via Bani) or bank account validation (async via Paystack). For BVN type, the customer is auto-validated if the name matches. For bank_account type, the result is delivered via webhook (`customeridentification.success` / `customeridentification.failed`).",
+          "tags": ["Reference"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["country_code", "customer_id", "type"],
+                  "oneOf": [
+                    {
+                      "required": [
+                        "account_number",
+                        "bank_code",
+                        "bvn",
+                        "first_name",
+                        "last_name"
+                      ],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["bank_account"]
+                        },
+                        "country_code": {
+                          "type": "string",
+                          "example": "NG",
+                          "description": "2-letter ISO 3166-1 country code"
+                        },
+                        "account_number": {
+                          "type": "string",
+                          "example": "0123456789"
+                        },
+                        "bank_code": {
+                          "type": "string",
+                          "example": "007"
+                        },
+                        "bvn": {
+                          "type": "string",
+                          "example": "22222222222"
+                        },
+                        "first_name": {
+                          "type": "string"
+                        },
+                        "last_name": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "required": ["bvn"],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["bvn"]
+                        },
+                        "country_code": {
+                          "type": "string",
+                          "example": "NG",
+                          "description": "2-letter ISO 3166-1 country code"
+                        },
+                        "bvn": {
+                          "type": "string",
+                          "example": "22222222222"
+                        }
+                      }
+                    }
+                  ],
+                  "properties": {
+                    "country_code": {
+                      "type": "string",
+                      "example": "NG",
+                      "description": "2-letter ISO 3166-1 country code"
+                    },
+                    "customer_id": {
+                      "type": "string",
+                      "example": "cus_abc123"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": ["bank_account", "bvn"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "BVN validation result"
+            },
+            "202": {
+              "description": "Bank account validation submitted for processing"
+            }
+          }
+        }
+      },
+      "/v1/sandbox/bank-transfer": {
+        "post": {
+          "tags": ["Sandbox"],
+          "summary": "Simulate a bank transfer",
+          "description": "Simulates an incoming NGN bank transfer payin. Available only in development and staging environments.",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "bank_code",
+                    "account_number",
+                    "amount",
+                    "currency"
+                  ],
+                  "properties": {
+                    "bank_code": {
+                      "type": "string",
+                      "example": "000001"
+                    },
+                    "account_number": {
+                      "type": "string",
+                      "example": "9901234567"
+                    },
+                    "amount": {
+                      "type": "string",
+                      "example": "5000.00"
+                    },
+                    "currency": {
+                      "type": "string",
+                      "example": "NGN"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Webhook event injected",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "sandbox_transfer": {
+                            "$ref": "#/components/schemas/SandboxBankTransfer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/sandbox/crypto-transfer": {
+        "post": {
+          "tags": ["Sandbox"],
+          "summary": "Simulate a crypto transfer",
+          "description": "Simulates an incoming testnet crypto payin. Available only in development and staging environments.",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["address", "currency", "network", "amount"],
+                  "properties": {
+                    "address": {
+                      "type": "string",
+                      "example": "TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    },
+                    "currency": {
+                      "type": "string",
+                      "example": "USDT"
+                    },
+                    "network": {
+                      "type": "string",
+                      "example": "TRX"
+                    },
+                    "amount": {
+                      "type": "string",
+                      "example": "10.00"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Crypto transaction sent",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "sandbox_transfer": {
+                            "$ref": "#/components/schemas/SandboxCryptoTransfer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sandbox/bank-transfer": {
+      "post": {
+        "tags": ["Sandbox"],
+        "summary": "Simulate a bank transfer",
+        "description": "Injects a mock Bani payin_bank_transfer webhook into the processing pipeline. Available only in development and staging environments.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "bank_code",
+                  "account_number",
+                  "amount",
+                  "currency"
+                ],
+                "properties": {
+                  "bank_code": {
+                    "type": "string",
+                    "example": "000001"
+                  },
+                  "account_number": {
+                    "type": "string",
+                    "example": "9901234567"
+                  },
+                  "amount": {
+                    "type": "string",
+                    "example": "5000.00"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "example": "NGN"
+                  },
+                  "client_reference": {
+                    "type": "string",
+                    "example": "payout_2026_05_11_001"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Webhook event injected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sandbox_transfer": {
+                          "$ref": "#/components/schemas/SandboxBankTransfer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sandbox/crypto-transfer": {
+      "post": {
+        "tags": ["Sandbox"],
+        "summary": "Simulate a crypto transfer",
+        "description": "Sends testnet tokens from the sandbox test address to the destination address. The Tron scanner detects the inbound transfer and creates a payin. Available only in development and staging environments.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["address", "currency", "network", "amount"],
+                "properties": {
+                  "address": {
+                    "type": "string",
+                    "example": "TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "example": "USDT"
+                  },
+                  "network": {
+                    "type": "string",
+                    "example": "TRX"
+                  },
+                  "amount": {
+                    "type": "string",
+                    "example": "10.00"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Crypto transaction sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sandbox_transfer": {
+                          "$ref": "#/components/schemas/SandboxCryptoTransfer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resolve-bank-account": {
+      "post": {
+        "tags": ["Reference"],
+        "summary": "Verify a bank account",
+        "description": "Resolves the account name for a bank account number using the active fiat provider (Bani or Paystack). Use this to verify a bank account exists before initiating a payout.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["country_code", "bank_code", "account_number"],
+                "properties": {
+                  "country_code": {
+                    "type": "string",
+                    "example": "NG",
+                    "description": "2-letter ISO 3166-1 country code"
+                  },
+                  "bank_code": {
+                    "type": "string",
+                    "example": "000001"
+                  },
+                  "account_number": {
+                    "type": "string",
+                    "example": "0123456789"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account name resolved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "account_name": {
+                          "type": "string",
+                          "example": "John Doe"
+                        },
+                        "country_code": {
+                          "type": "string",
+                          "example": "NG"
+                        },
+                        "bank_code": {
+                          "type": "string",
+                          "example": "000001"
+                        },
+                        "account_number": {
+                          "type": "string",
+                          "example": "0123456789"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Wallets",
+      "description": "View your business wallet balances"
+    },
+    {
+      "name": "Customers",
+      "description": "Manage customers and their payment accounts"
+    },
+    {
+      "name": "Transfers",
+      "description": "Send crypto and fiat to customers"
+    },
+    {
+      "name": "Swaps",
+      "description": "Exchange between USDT, USDC, and NGN"
+    },
+    {
+      "name": "Rates",
+      "description": "Live and historical exchange rates"
+    },
+    {
+      "name": "Transactions",
+      "description": "Full transaction history"
+    },
+    {
+      "name": "Webhooks",
+      "description": "Webhook delivery log"
+    },
+    {
+      "name": "Sandbox",
+      "description": "Simulate payments in test environments"
+    },
+    {
+      "name": "Reference",
+      "description": "Reference data: currencies, banks, swap pairs"
+    },
+    {
+      "name": "Payins",
+      "description": "Create and manage payment collection points"
+    },
+    {
+      "name": "Payouts",
+      "description": "Send funds to customers"
+    },
+    {
+      "name": "MobileMoney",
+      "description": "Mobile money support"
+    }
+  ]
+}
