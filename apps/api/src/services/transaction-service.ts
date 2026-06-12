@@ -528,7 +528,7 @@ export class TransactionService {
     );
     const payout = await this.skyewallet.createPayout({
       type: "fiat",
-      amount: formatAmount(lockedQuote.netAmount),
+      amount: formatAmount(lockedQuote.netAmount, 2),
       currency: "NGN",
       bank_code: transaction.bankDestination.bankCode,
       account_number: transaction.bankDestination.accountNumber,
