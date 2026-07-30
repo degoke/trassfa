@@ -4,8 +4,9 @@ import { webhookEventsTable, type WebhookEventRow } from "../db/schema.js";
 import type {
   SkyewalletWebhookEvent,
   WebhookEventRecord,
-  WebhookEventStatus
+  WebhookEventStatus,
 } from "../lib/domain.js";
+import { logger } from "../lib/logger.js";
 
 const STALE_PROCESSING_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -21,35 +22,40 @@ export class WebhookEventRepository {
         dedupeKey: input.dedupeKey,
         event: input.event,
         payload: input.payload,
-        status: "pending"
+        status: "pending",
       })
       .onConflictDoNothing({
-        target: webhookEventsTable.dedupeKey
+        target: webhookEventsTable.dedupeKey,
       })
       .returning();
 
     const insertedRecord = inserted[0];
     if (insertedRecord) {
-      console.log("[webhook] createOrGetPending: created new record", { id: insertedRecord.id, dedupeKey: input.dedupeKey });
+      logger.debug("[webhook] createOrGetPending: created", {
+        id: insertedRecord.id,
+        dedupeKey: input.dedupeKey,
+      });
       return {
         created: true,
-        record: mapWebhookEvent(insertedRecord)
+        record: mapWebhookEvent(insertedRecord),
       };
     }
 
-    console.log("[webhook] createOrGetPending: dedupe hit, fetching existing", { dedupeKey: input.dedupeKey });
     const existing = await db.query.webhookEventsTable.findFirst({
-      where: eq(webhookEventsTable.dedupeKey, input.dedupeKey)
+      where: eq(webhookEventsTable.dedupeKey, input.dedupeKey),
     });
 
     if (!existing) {
       throw new Error("Failed to load webhook event after dedupe conflict");
     }
 
-    console.log("[webhook] createOrGetPending: returning existing", { id: existing.id, status: existing.status });
+    logger.debug("[webhook] createOrGetPending: dedupe hit", {
+      id: existing.id,
+      status: existing.status,
+    });
     return {
       created: false,
-      record: mapWebhookEvent(existing)
+      record: mapWebhookEvent(existing),
     };
   }
 
@@ -61,7 +67,7 @@ export class WebhookEventRepository {
       .set({
         status: "processing",
         updatedAt: new Date(),
-        error: null
+        error: null,
       })
       .where(
         and(
@@ -70,10 +76,10 @@ export class WebhookEventRepository {
             inArray(webhookEventsTable.status, ["pending", "failed"]),
             and(
               eq(webhookEventsTable.status, "processing"),
-              lt(webhookEventsTable.updatedAt, staleThreshold)
-            )
-          )
-        )
+              lt(webhookEventsTable.updatedAt, staleThreshold),
+            ),
+          ),
+        ),
       )
       .returning();
 
@@ -88,13 +94,13 @@ export class WebhookEventRepository {
       .set({
         status: "failed",
         error: "Stale processing reset — server restarted",
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(
         and(
           eq(webhookEventsTable.status, "processing"),
-          lt(webhookEventsTable.updatedAt, staleThreshold)
-        )
+          lt(webhookEventsTable.updatedAt, staleThreshold),
+        ),
       )
       .returning();
 
@@ -104,7 +110,7 @@ export class WebhookEventRepository {
   async markProcessed(
     id: number,
     status: Extract<WebhookEventStatus, "processed" | "ignored">,
-    matchedTransactionId?: string
+    matchedTransactionId?: string,
   ) {
     await db
       .update(webhookEventsTable)
@@ -113,7 +119,7 @@ export class WebhookEventRepository {
         matchedTransactionId: matchedTransactionId ?? null,
         processedAt: new Date(),
         updatedAt: new Date(),
-        error: null
+        error: null,
       })
       .where(eq(webhookEventsTable.id, id));
   }
@@ -125,7 +131,7 @@ export class WebhookEventRepository {
         status: "failed",
         matchedTransactionId: matchedTransactionId ?? null,
         error,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(webhookEventsTable.id, id));
   }
@@ -142,6 +148,6 @@ function mapWebhookEvent(row: WebhookEventRow): WebhookEventRecord {
     error: row.error ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    processedAt: row.processedAt?.toISOString()
+    processedAt: row.processedAt?.toISOString(),
   };
 }

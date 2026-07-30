@@ -1,6 +1,7 @@
 {
-  "name": "linkpay",
+  "name": "trassfa",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "packageManager": "pnpm@11.1.1",
   "scripts": {
@@ -9,13 +10,22 @@
     "dev:web": "turbo dev --filter=@linkpay/web",
     "build": "turbo build",
     "typecheck": "turbo typecheck",
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "check": "pnpm format && pnpm typecheck && pnpm lint && pnpm test",
+    "test": "turbo test",
     "auth:generate": "turbo auth:generate --filter=@linkpay/api",
     "db:generate": "turbo db:generate --filter=@linkpay/api",
-    "db:migrate": "turbo db:migrate --filter=@linkpay/api",
-    "db:push": "turbo db:push --filter=@linkpay/api"
+    "db:migrate": "turbo db:migrate --filter=@linkpay/api"
   },
   "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "eslint": "^9.36.0",
+    "globals": "^17.8.0",
+    "prettier": "^3.6.2",
     "turbo": "^2.9.16",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.44.0"
   }
 }

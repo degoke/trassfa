@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "@tanstack/react-router";
 import { AuthRequired } from "../components/auth-required";
+import { CompletedTransactionCta } from "../components/completed-transaction-cta";
+import { FlowAlerts } from "../components/flow-alerts";
+import { QuoteRefreshBanner } from "../components/quote-refresh-banner";
 import { TransactionTimeline } from "../components/transaction-timeline";
 import {
   createBankToCryptoTransaction,
@@ -11,33 +13,23 @@ import {
   type Transaction,
 } from "../lib/api";
 import { authClient } from "../lib/auth-client";
+import { useFlowFeedback } from "../lib/use-flow-feedback";
+import { useLivePaymentQuote } from "../lib/use-live-payment-quote";
+import { usePreviewQuoteRefresh } from "../lib/use-preview-quote-refresh";
 import { useLiveTransaction } from "../lib/live-transaction";
-import {
-  formatAsset,
-  formatNaira,
-  isTerminalStatus,
-  statusLabel,
-} from "../lib/transaction-ui";
-import {
-  formatCountdown,
-  useRefreshCountdown,
-  useSecondsRemaining,
-} from "../lib/timers";
+import { formatAsset, formatNaira, isTerminalStatus, statusLabel } from "../lib/transaction-ui";
+import { formatCountdown, useRefreshCountdown, useSecondsRemaining } from "../lib/timers";
 
 type Step = "setup" | "preview" | "account";
 
 export function ReceivePage() {
   const { data: session, isPending: sessionPending } = authClient.useSession();
+  const { error, setError, feedback, setFeedback } = useFlowFeedback();
   const [step, setStep] = useState<Step>("setup");
-  const [error, setError] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [quote, setQuote] = useState<QuoteResponse["quote"] | null>(null);
   const [transaction, setTransaction] = useState<Transaction | null>(null);
-  const [liveAccountQuote, setLiveAccountQuote] =
-    useState<QuoteResponse["quote"] | null>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const [isCreatingTransaction, setIsCreatingTransaction] = useState(false);
-  const [isRefreshingPreviewQuote, setIsRefreshingPreviewQuote] = useState(false);
   const [isRefreshingAccountQuote, setIsRefreshingAccountQuote] = useState(false);
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
   const [form, setForm] = useState({
@@ -46,17 +38,16 @@ export function ReceivePage() {
     network: "TRX" as "TRX" | "SOL",
     address: "",
   });
-  const isAwaitingAccountPayment =
-    transaction?.direction === "bank_to_crypto" &&
-    transaction.status === "awaiting_payment";
-  const activeAccountQuote =
-    isAwaitingAccountPayment
-      ? liveAccountQuote ?? transaction.quote
-      : transaction?.quote ?? null;
+  const {
+    setLiveQuote: setLiveAccountQuote,
+    isAwaitingPayment: isAwaitingAccountPayment,
+    activeQuote: activeAccountQuote,
+  } = useLivePaymentQuote({
+    transaction,
+    direction: "bank_to_crypto",
+  });
   const accountExpirySeconds = useSecondsRemaining(
-    transaction?.direction === "bank_to_crypto"
-      ? transaction.virtualAccount.expiresAt
-      : undefined,
+    transaction?.direction === "bank_to_crypto" ? transaction.virtualAccount.expiresAt : undefined,
   );
   const isAccountExpired = accountExpirySeconds !== null && accountExpirySeconds === 0;
 
@@ -69,19 +60,73 @@ export function ReceivePage() {
     onError: setError,
   });
 
-  useEffect(() => {
-    if (!transaction || transaction.direction !== "bank_to_crypto") {
-      setLiveAccountQuote(null);
+  const refreshPreviewQuote = useCallback(async () => {
+    if (step !== "preview") {
       return;
     }
 
-    if (transaction.status !== "awaiting_payment") {
-      setLiveAccountQuote(null);
+    try {
+      const response = await getBankToCryptoQuote({
+        fromAmount: Number(form.amount),
+        toCurrency: form.currency,
+        network: form.network,
+      });
+
+      setQuote(response.quote);
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to refresh preview");
+    }
+  }, [form.amount, form.currency, form.network, setError, step]);
+
+  const refreshAccountQuote = useCallback(async () => {
+    if (
+      !transaction ||
+      transaction.direction !== "bank_to_crypto" ||
+      transaction.status !== "awaiting_payment"
+    ) {
       return;
     }
 
-    setLiveAccountQuote((current) => current ?? transaction.quote);
-  }, [transaction?.id, transaction?.status]);
+    if (
+      transaction.virtualAccount.expiresAt &&
+      new Date(transaction.virtualAccount.expiresAt).getTime() <= Date.now()
+    ) {
+      return;
+    }
+
+    setIsRefreshingAccountQuote(true);
+
+    try {
+      const response = await getBankToCryptoQuote({
+        fromAmount: transaction.quote.fromAmount,
+        toCurrency: transaction.payoutDestination.currency as "USDT" | "USDC",
+        network: transaction.payoutDestination.network as "TRX" | "SOL",
+      });
+
+      setLiveAccountQuote(response.quote);
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to refresh live payout quote");
+    } finally {
+      setIsRefreshingAccountQuote(false);
+    }
+  }, [setError, setLiveAccountQuote, transaction]);
+
+  const { isRefreshing: isRefreshingPreviewQuote, refreshSeconds: previewRefreshSeconds } =
+    usePreviewQuoteRefresh({
+      enabled: step === "preview" && Boolean(quote),
+      onRefresh: refreshPreviewQuote,
+    });
+
+  const accountRefreshSeconds = useRefreshCountdown({
+    enabled:
+      transaction?.direction === "bank_to_crypto" &&
+      transaction.status === "awaiting_payment" &&
+      accountExpirySeconds !== null &&
+      accountExpirySeconds > 0,
+    onRefresh: refreshAccountQuote,
+  });
 
   if (sessionPending) {
     return <p className="screen-message">Loading...</p>;
@@ -112,9 +157,7 @@ export function ReceivePage() {
       setQuote(response.quote);
       setStep("preview");
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Unable to load preview",
-      );
+      setError(reason instanceof Error ? reason.message : "Unable to load preview");
     } finally {
       setIsLoadingQuote(false);
     }
@@ -143,31 +186,6 @@ export function ReceivePage() {
     }
   }
 
-  async function refreshPreviewQuote() {
-    if (step !== "preview") {
-      return;
-    }
-
-    setIsRefreshingPreviewQuote(true);
-
-    try {
-      const response = await getBankToCryptoQuote({
-        fromAmount: Number(form.amount),
-        toCurrency: form.currency,
-        network: form.network,
-      });
-
-      setQuote(response.quote);
-      setError(null);
-    } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Unable to refresh preview",
-      );
-    } finally {
-      setIsRefreshingPreviewQuote(false);
-    }
-  }
-
   async function handleProceed() {
     setError(null);
     setFeedback(null);
@@ -188,51 +206,9 @@ export function ReceivePage() {
       setTransaction(response.transaction);
       setStep("account");
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Unable to create transaction",
-      );
+      setError(reason instanceof Error ? reason.message : "Unable to create transaction");
     } finally {
       setIsCreatingTransaction(false);
-    }
-  }
-
-  async function refreshAccountQuote() {
-    if (
-      !transaction ||
-      transaction.direction !== "bank_to_crypto" ||
-      transaction.status !== "awaiting_payment"
-    ) {
-      return;
-    }
-
-    if (
-      transaction.virtualAccount.expiresAt &&
-      new Date(transaction.virtualAccount.expiresAt).getTime() <= Date.now()
-    ) {
-      return;
-    }
-
-    setIsRefreshingAccountQuote(true);
-
-    try {
-      const response = await getBankToCryptoQuote({
-        fromAmount: transaction.quote.fromAmount,
-        toCurrency: transaction.payoutDestination.currency as "USDT" | "USDC",
-        network: transaction.payoutDestination.network as "TRX" | "SOL",
-      });
-
-      setLiveAccountQuote(response.quote);
-      setError(null);
-    } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Unable to refresh live payout quote",
-      );
-    } finally {
-      setIsRefreshingAccountQuote(false);
     }
   }
 
@@ -248,20 +224,6 @@ export function ReceivePage() {
       setError("Unable to copy the account number right now.");
     }
   }
-
-  const previewRefreshSeconds = useRefreshCountdown({
-    enabled: step === "preview" && Boolean(quote),
-    onRefresh: refreshPreviewQuote,
-  });
-
-  const accountRefreshSeconds = useRefreshCountdown({
-    enabled:
-      transaction?.direction === "bank_to_crypto" &&
-      transaction.status === "awaiting_payment" &&
-      accountExpirySeconds !== null &&
-      accountExpirySeconds > 0,
-    onRefresh: refreshAccountQuote,
-  });
 
   return (
     <div className="mobile-screen">
@@ -341,8 +303,7 @@ export function ReceivePage() {
           </label>
 
           {isValidatingAddress ? <p className="muted">Validating address...</p> : null}
-          {error ? <p className="error-text">{error}</p> : null}
-          {feedback ? <p className="success-text">{feedback}</p> : null}
+          <FlowAlerts error={error} feedback={feedback} />
 
           <button
             className="button button-primary button-block"
@@ -361,19 +322,13 @@ export function ReceivePage() {
             <strong>{formatNaira(quote.fromAmount)}</strong>
             <span>You will receive this as crypto</span>
           </div>
-          <div className="inline-note countdown-note">
-            <div className="summary-row">
-              <span>Rate refresh</span>
-              <strong>
-                {isRefreshingPreviewQuote || previewRefreshSeconds === 0
-                  ? "Refreshing..."
-                  : formatCountdown(previewRefreshSeconds)}
-              </strong>
-            </div>
-          </div>
+          <QuoteRefreshBanner
+            isRefreshing={isRefreshingPreviewQuote}
+            refreshSeconds={previewRefreshSeconds}
+          />
           <p className="muted">
-            This quote can change with market rates until your payment is received.
-            Once the transfer lands, the transaction continues on the locked amount.
+            This quote can change with market rates until your payment is received. Once the
+            transfer lands, the transaction continues on the locked amount.
           </p>
           <div className="mobile-summary-list">
             <div className="summary-row">
@@ -382,14 +337,14 @@ export function ReceivePage() {
             </div>
             <div className="summary-row">
               <span>Fee</span>
-              <strong>{formatAsset(quote.linkpayFee, quote.toCurrency)}</strong>
+              <strong>{formatAsset(quote.platformFee, quote.toCurrency)}</strong>
             </div>
             <div className="summary-row">
               <span>Wallet</span>
               <strong className="mono">{form.address}</strong>
             </div>
           </div>
-          {error ? <p className="error-text">{error}</p> : null}
+          <FlowAlerts error={error} />
           <div className="stacked-actions">
             <button
               className="button button-primary button-block"
@@ -412,9 +367,7 @@ export function ReceivePage() {
         </section>
       ) : null}
 
-      {step === "account" &&
-      transaction &&
-      transaction.direction === "bank_to_crypto" ? (
+      {step === "account" && transaction && transaction.direction === "bank_to_crypto" ? (
         <>
           <section className="mobile-card mobile-card-spaced">
             <span className="section-label">Send NGN here</span>
@@ -424,9 +377,7 @@ export function ReceivePage() {
             </div>
             <div className="copy-card">
               <span className="section-label">Account number</span>
-              <strong className="mono">
-                {transaction.virtualAccount.accountNumber}
-              </strong>
+              <strong className="mono">{transaction.virtualAccount.accountNumber}</strong>
               <button
                 className="button button-primary button-block"
                 type="button"
@@ -438,15 +389,15 @@ export function ReceivePage() {
               </button>
             </div>
             <p className="muted">
-              Send exactly {formatNaira(transaction.quote.fromAmount)} to this
-              account. Any other amount will not be processed.
+              Send exactly {formatNaira(transaction.quote.fromAmount)} to this account. Any other
+              amount will not be processed.
             </p>
             {isAwaitingAccountPayment && transaction.virtualAccount.expiresAt ? (
               accountExpirySeconds === 0 ? (
                 <p className="error-text">
                   This account expired{" "}
-                  {new Date(transaction.virtualAccount.expiresAt).toLocaleString()}.
-                  A new transaction will generate a fresh account.
+                  {new Date(transaction.virtualAccount.expiresAt).toLocaleString()}. A new
+                  transaction will generate a fresh account.
                 </p>
               ) : (
                 <div className="inline-note countdown-note">
@@ -464,29 +415,21 @@ export function ReceivePage() {
               )
             ) : null}
             {isAwaitingAccountPayment && activeAccountQuote ? (
-              <div className="inline-note countdown-note">
-                <div className="summary-row">
-                  <span>Rate refresh</span>
-                  <strong>
-                    {isRefreshingAccountQuote || accountRefreshSeconds === 0
-                      ? "Refreshing..."
-                      : formatCountdown(accountRefreshSeconds)}
-                  </strong>
-                </div>
-              </div>
+              <QuoteRefreshBanner
+                isRefreshing={isRefreshingAccountQuote}
+                refreshSeconds={accountRefreshSeconds}
+              />
             ) : null}
             {isAwaitingAccountPayment ? (
               <p className="muted">
-                The bank transfer amount is locked. The crypto payout stays
-                estimated until your transfer is received and the swap is executed.
+                The bank transfer amount is locked. The crypto payout stays estimated until your
+                transfer is received and the swap is executed.
               </p>
             ) : null}
             <div className="mobile-summary-list">
               <div className="summary-row">
                 <span>
-                  {isAwaitingAccountPayment
-                    ? "Estimated crypto payout"
-                    : "Crypto payout"}
+                  {isAwaitingAccountPayment ? "Estimated crypto payout" : "Crypto payout"}
                 </span>
                 <strong>
                   {formatAsset(
@@ -501,7 +444,9 @@ export function ReceivePage() {
           <section className="mobile-card mobile-card-spaced">
             <div className="summary-row">
               <span>Status</span>
-              <span className={`status-badge ${isAccountExpired ? "status-expired" : `status-${transaction.status}`}`}>
+              <span
+                className={`status-badge ${isAccountExpired ? "status-expired" : `status-${transaction.status}`}`}
+              >
                 {isAccountExpired ? statusLabel("expired") : statusLabel(transaction.status)}
               </span>
             </div>
@@ -517,27 +462,11 @@ export function ReceivePage() {
               </div>
             </div>
             {transaction.error ? <p className="error-text">{transaction.error}</p> : null}
-            {feedback ? <p className="success-text">{feedback}</p> : null}
+            <FlowAlerts feedback={feedback} />
           </section>
 
           {isTerminalStatus(transaction.status) ? (
-            <section className="mobile-card mobile-card-spaced">
-              <span className="section-label">Next</span>
-              <strong>
-                {transaction.status === "completed"
-                  ? "Payout completed."
-                  : "Transaction closed."}
-              </strong>
-              <div className="stacked-actions">
-                <Link
-                  to="/app/transactions/$id"
-                  params={{ id: transaction.id }}
-                  className="button button-primary button-block"
-                >
-                  View transaction details
-                </Link>
-              </div>
-            </section>
+            <CompletedTransactionCta transaction={transaction} />
           ) : null}
         </>
       ) : null}

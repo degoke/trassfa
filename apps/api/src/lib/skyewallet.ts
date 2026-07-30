@@ -1,3 +1,5 @@
+import { logger } from "./logger.js";
+
 const REQUEST_TIMEOUT_MS = 30_000;
 
 type RequestOptions = {
@@ -241,7 +243,7 @@ export class SkyewalletClient {
       data: { customer: SkyewalletCustomer };
     }>("/v1/customers", {
       method: "POST",
-      body: input
+      body: input,
     });
   }
 
@@ -251,7 +253,7 @@ export class SkyewalletClient {
       data: { customer: SkyewalletCustomer };
     }>("/v1/customers/lookup", {
       method: "POST",
-      body: input
+      body: input,
     });
   }
 
@@ -260,12 +262,12 @@ export class SkyewalletClient {
       const found = await this.lookupCustomer({ email: input.email });
       if (found.data.customer) {
         if (!found.data.customer.phone && input.phone) {
-          return (await this.updateCustomer(found.data.customer.id, { phone: input.phone })).data.customer;
+          return (await this.updateCustomer(found.data.customer.id, { phone: input.phone })).data
+            .customer;
         }
         return found.data.customer;
       }
-    } catch {
-    }
+    } catch {}
 
     const created = await this.createCustomer(input);
     return created.data.customer;
@@ -277,7 +279,7 @@ export class SkyewalletClient {
       data: { customer: SkyewalletCustomer };
     }>(`/v1/customers/${customerId}`, {
       method: "PATCH",
-      body: input as Record<string, unknown>
+      body: input as Record<string, unknown>,
     });
   }
 
@@ -287,7 +289,7 @@ export class SkyewalletClient {
       data: { payin: SkyewalletPayin };
     }>("/v1/payin", {
       method: "POST",
-      body: input
+      body: input,
     });
   }
 
@@ -321,7 +323,7 @@ export class SkyewalletClient {
       };
     }>("/v1/swap/quote", {
       method: "POST",
-      body: input
+      body: input,
     });
   }
 
@@ -342,8 +344,8 @@ export class SkyewalletClient {
     }>("/v1/swap/execute", {
       method: "POST",
       body: {
-        quote_id: quoteId
-      }
+        quote_id: quoteId,
+      },
     });
   }
 
@@ -362,7 +364,7 @@ export class SkyewalletClient {
       };
     }>("/v1/payouts", {
       method: "POST",
-      body: input
+      body: input,
     });
   }
 
@@ -373,11 +375,7 @@ export class SkyewalletClient {
     }>(`/v1/transactions/${encodeURIComponent(id)}`);
   }
 
-  resolveBankAccount(input: {
-    country_code: string;
-    bank_code: string;
-    account_number: string;
-  }) {
+  resolveBankAccount(input: { country_code: string; bank_code: string; account_number: string }) {
     return this.request<{
       success: boolean;
       data: {
@@ -387,7 +385,7 @@ export class SkyewalletClient {
       };
     }>("/v1/resolve-bank-account", {
       method: "POST",
-      body: input
+      body: input,
     });
   }
 
@@ -403,7 +401,7 @@ export class SkyewalletClient {
       error?: { message: string };
     }>("/v1/validate-address", {
       method: "POST",
-      body: input
+      body: input,
     });
   }
 
@@ -421,17 +419,17 @@ export class SkyewalletClient {
   }
 
   private async request<T>(path: string, options: RequestOptions = {}) {
-    console.log("[skyewallet] request", options.method ?? "GET", `${this.config.baseUrl}${path}`, options.body ? JSON.stringify(options.body) : "");
+    logger.debug("[skyewallet] request", options.method ?? "GET", `${this.config.baseUrl}${path}`);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     const response = await fetch(`${this.config.baseUrl}${path}`, {
       method: options.method ?? "GET",
       headers: {
         Authorization: `Bearer ${this.config.apiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
-      signal: controller.signal
+      signal: controller.signal,
     });
     clearTimeout(timeoutId);
 

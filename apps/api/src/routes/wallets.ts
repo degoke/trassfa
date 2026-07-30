@@ -8,7 +8,7 @@ import { requireAuth, requireAuthenticatedUser } from "./middleware.js";
 const validateAddressSchema = z.object({
   address: z.string().min(1),
   currency: z.enum(["USDT", "USDC"]),
-  network: z.enum(["TRX", "SOL"])
+  network: z.enum(["TRX", "SOL"]),
 });
 
 export function createWalletRoutes(skyewallet: SkyewalletClient) {
@@ -18,25 +18,23 @@ export function createWalletRoutes(skyewallet: SkyewalletClient) {
 
   app.use("*", requireAuth);
 
-  app.post(
-    "/api/wallets/validate",
-    zValidator("json", validateAddressSchema),
-    async (c) => {
-      requireAuthenticatedUser(c);
-      const body = c.req.valid("json");
+  app.post("/api/wallets/validate", zValidator("json", validateAddressSchema), async (c) => {
+    requireAuthenticatedUser(c);
+    const body = c.req.valid("json");
 
-      const validation = await skyewallet.validateAddress(body);
+    const validation = await skyewallet.validateAddress(body);
 
-      if (!validation.data.valid) {
-        return c.json({
-          valid: false,
-          message: validation.error?.message ?? `Invalid ${body.currency} address for ${body.network} network`
-        });
-      }
-
-      return c.json({ valid: true });
+    if (!validation.data.valid) {
+      return c.json({
+        valid: false,
+        message:
+          validation.error?.message ??
+          `Invalid ${body.currency} address for ${body.network} network`,
+      });
     }
-  );
+
+    return c.json({ valid: true });
+  });
 
   return app;
 }

@@ -12,25 +12,16 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema.js";
 import type {
-  CustomerProfile,
   CustomerLevel,
-  DepositBankDestination,
   KycStatus,
-  KycSubmission,
   KycType,
-  PayoutDetails,
-  PermanentAccount,
-  PermanentAddress,
-  QuotePreview,
   SkyewalletWebhookEvent,
   TransactionDirection,
-  TransactionStatus,
   TransactionReference,
+  TransactionStatus,
   WebhookEventStatus,
 } from "../lib/domain.js";
 export * from "./auth-schema.js";
-//
-// let user: any;
 
 export const customerProfileTable = pgTable(
   "customer_profile",
@@ -57,12 +48,8 @@ export const customerProfileTable = pgTable(
     country: text("country").default("NG").notNull(),
     dateOfBirth: text("date_of_birth"),
     skyewalletCustomerId: text("skyewallet_customer_id"),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
   (table) => [index("customer_profile_user_id_idx").on(table.userId)],
 );
@@ -79,12 +66,8 @@ export const permanentAddressTable = pgTable(
     network: text("network").notNull(),
     accountId: text("account_id").notNull(),
     address: text("address").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
   (table) => [index("permanent_address_user_id_idx").on(table.userId)],
 );
@@ -101,12 +84,8 @@ export const permanentAccountTable = pgTable(
     bankName: text("bank_name").notNull(),
     accountNumber: text("account_number").notNull(),
     accountName: text("account_name").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
   (table) => [index("permanent_account_user_id_idx").on(table.userId)],
 );
@@ -123,12 +102,8 @@ export const kycSubmissionsTable = pgTable(
     data: jsonb("data").$type<Record<string, unknown>>().notNull(),
     verifiedAt: timestamp("verified_at", { withTimezone: true, mode: "date" }),
     rejectedReason: text("rejected_reason"),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
   (table) => [
     index("kyc_submissions_user_id_idx").on(table.userId),
@@ -148,12 +123,8 @@ export const transactionsTable = pgTable(
     skyewalletCustomerId: text("skyewallet_customer_id").notNull(),
     lastEvent: jsonb("last_event").$type<SkyewalletWebhookEvent>(),
     error: text("error"),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
   (table) => [
     index("transactions_created_at_idx").on(table.createdAt),
@@ -190,15 +161,9 @@ export const depositBankDestinationTable = pgTable(
     payoutAddress: text("payout_address"),
     payoutCurrency: text("payout_currency"),
     payoutNetwork: text("payout_network"),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
-  (table) => [
-    index("deposit_bank_destination_transaction_id_idx").on(
-      table.transactionId,
-    ),
-  ],
+  (table) => [index("deposit_bank_destination_transaction_id_idx").on(table.transactionId)],
 );
 
 export const quotePreviewTable = pgTable(
@@ -219,16 +184,10 @@ export const quotePreviewTable = pgTable(
     netAmount: numeric("net_amount").notNull(),
     rate: numeric("rate").notNull(),
     expiresAt: text("expires_at"),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
-  (table) => [
-    index("quote_preview_transaction_id_idx").on(table.transactionId),
-  ],
+  (table) => [index("quote_preview_transaction_id_idx").on(table.transactionId)],
 );
 
 export const payoutDetailsTable = pgTable(
@@ -243,16 +202,10 @@ export const payoutDetailsTable = pgTable(
     status: text("status").notNull(),
     amount: numeric("amount").notNull(),
     currency: text("currency").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
-  (table) => [
-    index("payout_details_transaction_id_idx").on(table.transactionId),
-  ],
+  (table) => [index("payout_details_transaction_id_idx").on(table.transactionId)],
 );
 
 export const transactionReferencesTable = pgTable(
@@ -264,9 +217,7 @@ export const transactionReferencesTable = pgTable(
       .notNull(),
     type: text("type").notNull(),
     value: text("value").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
   },
   (table) => [
     index("transaction_references_transaction_id_idx").on(table.transactionId),
@@ -286,23 +237,13 @@ export const webhookEventsTable = pgTable(
     dedupeKey: text("dedupe_key").notNull(),
     event: text("event").notNull(),
     payload: jsonb("payload").$type<SkyewalletWebhookEvent>().notNull(),
-    status: text("status")
-      .$type<WebhookEventStatus>()
-      .notNull()
-      .default("pending"),
-    matchedTransactionId: text("matched_transaction_id").references(
-      () => transactionsTable.id,
-      {
-        onDelete: "set null",
-      },
-    ),
+    status: text("status").$type<WebhookEventStatus>().notNull().default("pending"),
+    matchedTransactionId: text("matched_transaction_id").references(() => transactionsTable.id, {
+      onDelete: "set null",
+    }),
     error: text("error"),
-    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
     processedAt: timestamp("processed_at", {
       withTimezone: true,
       mode: "date",
@@ -314,22 +255,34 @@ export const webhookEventsTable = pgTable(
   ],
 );
 
+export const phoneOtpChallengesTable = pgTable(
+  "phone_otp_challenges",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .references(() => user.id, { onDelete: "cascade" })
+      .notNull(),
+    phone: text("phone").notNull(),
+    codeHash: text("code_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [index("phone_otp_challenges_user_id_idx").on(table.userId)],
+);
+
 export type TransactionRow = typeof transactionsTable.$inferSelect;
 export type CustomerProfileRow = typeof customerProfileTable.$inferSelect;
-export type DepositBankDestinationRow =
-  typeof depositBankDestinationTable.$inferSelect;
+export type DepositBankDestinationRow = typeof depositBankDestinationTable.$inferSelect;
 export type QuotePreviewRow = typeof quotePreviewTable.$inferSelect;
 export type PayoutDetailsRowRaw = typeof payoutDetailsTable.$inferSelect;
 export type PermanentAddressRow = typeof permanentAddressTable.$inferSelect;
 export type PermanentAccountRow = typeof permanentAccountTable.$inferSelect;
 export type KycSubmissionRow = typeof kycSubmissionsTable.$inferSelect;
-export type TransactionReferenceRow =
-  typeof transactionReferencesTable.$inferSelect;
+export type TransactionReferenceRow = typeof transactionReferencesTable.$inferSelect;
 export type WebhookEventRow = typeof webhookEventsTable.$inferSelect;
 
 export type TransactionInsert = typeof transactionsTable.$inferInsert;
-export type TransactionReferenceInsert =
-  typeof transactionReferencesTable.$inferInsert;
+export type TransactionReferenceInsert = typeof transactionReferencesTable.$inferInsert;
 export type WebhookEventInsert = typeof webhookEventsTable.$inferInsert;
 
 export type TransactionWithReferences = {

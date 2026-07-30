@@ -49,9 +49,7 @@ export function useLiveTransaction({
         }
 
         errorRef.current(
-          reason instanceof Error
-            ? reason.message
-            : "Unable to refresh transaction",
+          reason instanceof Error ? reason.message : "Unable to refresh transaction",
         );
       }
     };

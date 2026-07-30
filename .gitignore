@@ -2,6 +2,9 @@ node_modules
 dist
 .turbo
 .DS_Store
+**/.DS_Store
 .env
 .env.local
 coverage
+package-lock.json
+skyewallet.json

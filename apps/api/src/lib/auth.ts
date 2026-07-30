@@ -5,7 +5,7 @@ import * as schema from "../db/schema.js";
 import { env } from "./config.js";
 
 export const auth = betterAuth({
-  appName: "LinkPay",
+  appName: "trassfa",
   baseURL: env.BETTER_AUTH_URL,
   basePath: "/api/auth",
   secret: env.BETTER_AUTH_SECRET,

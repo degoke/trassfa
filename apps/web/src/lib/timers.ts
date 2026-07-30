@@ -80,7 +80,7 @@ export function useRefreshCountdown({
 
     const intervalId = window.setInterval(() => {
       setSecondsUntilRefresh((current) => {
-        const nextSeconds = target ? getSecondsRemaining(target) : current ?? intervalSeconds;
+        const nextSeconds = target ? getSecondsRemaining(target) : (current ?? intervalSeconds);
 
         if (nextSeconds !== null && nextSeconds <= 0) {
           if (!inFlightRef.current) {

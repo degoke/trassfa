@@ -2,7 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { AppVariables } from "../lib/app-context.js";
 import { QuoteService } from "../services/quote-service.js";
-import { requireAuth } from "./middleware.js";
+import { requireAuth, requireVerifiedEmail } from "./middleware.js";
 import { bankToCryptoQuoteSchema, cryptoToBankQuoteSchema } from "./schemas.js";
 
 export function createQuoteRoutes(quoteService: QuoteService) {
@@ -10,7 +10,7 @@ export function createQuoteRoutes(quoteService: QuoteService) {
     Variables: AppVariables;
   }>();
 
-  app.use("*", requireAuth);
+  app.use("*", requireAuth, requireVerifiedEmail);
 
   app.post("/api/quotes/crypto-to-bank", zValidator("json", cryptoToBankQuoteSchema), async (c) => {
     const body = c.req.valid("json");

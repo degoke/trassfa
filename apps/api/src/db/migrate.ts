@@ -3,7 +3,7 @@ import { db, pool } from "./client.js";
 
 async function main() {
   await migrate(db, {
-    migrationsFolder: "./drizzle"
+    migrationsFolder: "./drizzle",
   });
 
   console.log("Applied Drizzle migrations.");

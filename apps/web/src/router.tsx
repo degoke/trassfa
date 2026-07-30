@@ -29,10 +29,6 @@ function RootLayout() {
   const isMobileShellRoute = isAuthRoute || isAppRoute;
   const profileLabel = session?.user.email?.slice(0, 2).toUpperCase() ?? "PR";
 
-  async function handleSignOut() {
-    await authClient.signOut();
-  }
-
   return (
     <>
       {isMobileShellRoute ? (
@@ -65,11 +61,7 @@ function RootLayout() {
             </main>
             {isAppRoute ? (
               <nav className="mobile-tabbar">
-                <Link
-                  to="/app"
-                  className="tab-link"
-                  activeProps={{ className: "tab-link active" }}
-                >
+                <Link to="/app" className="tab-link" activeProps={{ className: "tab-link active" }}>
                   Home
                 </Link>
                 <Link
@@ -134,67 +126,67 @@ function RootLayout() {
           </main>
         </div>
       )}
-      <TanStackRouterDevtools />
+      {import.meta.env.DEV ? <TanStackRouterDevtools /> : null}
     </>
   );
 }
 
 const rootRoute = createRootRoute({
-  component: RootLayout
+  component: RootLayout,
 });
 
 const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: LandingPage
+  component: LandingPage,
 });
 
 const authRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/auth",
-  component: AuthPage
+  component: AuthPage,
 });
 
 const appHomeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/app",
-  component: AppHomePage
+  component: AppHomePage,
 });
 
 const sendRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/app/send",
-  component: SendPage
+  component: SendPage,
 });
 
 const receiveRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/app/receive",
-  component: ReceivePage
+  component: ReceivePage,
 });
 
 const transactionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/app/transactions",
-  component: TransactionsPage
+  component: TransactionsPage,
 });
 
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/app/profile",
-  component: ProfilePage
+  component: ProfilePage,
 });
 
 const transactionRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/app/transactions/$id",
-  component: TransactionPage
+  component: TransactionPage,
 });
 
 const transactionReceiptRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/app/transactions/$id/receipt",
-  component: TransactionReceiptPage
+  component: TransactionReceiptPage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -206,11 +198,11 @@ const routeTree = rootRoute.addChildren([
   transactionsRoute,
   profileRoute,
   transactionRoute,
-  transactionReceiptRoute
+  transactionReceiptRoute,
 ]);
 
 export const router = createRouter({
-  routeTree
+  routeTree,
 });
 
 declare module "@tanstack/react-router" {

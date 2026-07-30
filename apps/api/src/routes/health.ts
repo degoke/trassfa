@@ -8,8 +8,8 @@ export function createHealthRoutes() {
 
   app.get("/health", (c) =>
     c.json({
-      ok: true
-    })
+      ok: true,
+    }),
   );
 
   return app;

@@ -28,10 +28,7 @@ export function TransactionsPage() {
 
   if (!session?.user) {
     return (
-      <AuthRequired
-        title="History"
-        message="Sign in to see transaction history and receipts."
-      />
+      <AuthRequired title="History" message="Sign in to see transaction history and receipts." />
     );
   }
 

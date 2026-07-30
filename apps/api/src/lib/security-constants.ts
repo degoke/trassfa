@@ -1,0 +1,2 @@
+export const WEBHOOK_MAX_BODY_BYTES = 256 * 1024;
+export const WEBHOOK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;

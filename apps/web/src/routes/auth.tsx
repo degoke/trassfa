@@ -15,7 +15,7 @@ export function AuthPage() {
     name: "",
     email: "",
     phone: "",
-    password: ""
+    password: "",
   });
 
   useEffect(() => {
@@ -31,12 +31,18 @@ export function AuthPage() {
 
     try {
       if (mode === "sign-up") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const result = await (authClient.signUp.email as any)({
+        const result = await (
+          authClient.signUp.email as (input: {
+            name: string;
+            email: string;
+            password: string;
+            phone?: string;
+          }) => Promise<{ error?: { message?: string } }>
+        )({
           name: form.name,
           email: form.email,
           password: form.password,
-          phone: form.phone ? `234${form.phone.replace(/^\+?(234)?0?/, "")}` : undefined
+          phone: form.phone ? `234${form.phone.replace(/^\+?(234)?0?/, "")}` : undefined,
         });
 
         if (result.error) {
@@ -45,7 +51,7 @@ export function AuthPage() {
       } else {
         const result = await authClient.signIn.email({
           email: form.email,
-          password: form.password
+          password: form.password,
         });
 
         if (result.error) {
@@ -70,9 +76,7 @@ export function AuthPage() {
             ? "Create your account and enter the app."
             : "Sign in and continue your flow."}
         </strong>
-        <span className="hero-balance-meta">
-          Crypto to bank. Bank to crypto. One mobile flow.
-        </span>
+        <span className="hero-balance-meta">Crypto to bank. Bank to crypto. One mobile flow.</span>
       </section>
 
       <section className="mobile-card form-stack">

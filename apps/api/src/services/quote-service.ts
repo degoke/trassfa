@@ -2,10 +2,7 @@ import { feeConfig } from "../config/fee.js";
 import type { QuotePreview } from "../lib/domain.js";
 import { Decimal, calculateFee, money, roundAmount } from "../lib/money.js";
 import { SkyewalletClient } from "../lib/skyewallet.js";
-import type {
-  BankToCryptoQuoteInput,
-  CryptoToBankQuoteInput
-} from "../routes/schemas.js";
+import type { BankToCryptoQuoteInput, CryptoToBankQuoteInput } from "../routes/schemas.js";
 
 export class QuoteService {
   constructor(private readonly skyewallet: SkyewalletClient) {}
@@ -26,14 +23,14 @@ export class QuoteService {
     const targetNetAmount = money(input.toAmount!);
     const targetGrossAmount = grossFromNetAmount(
       targetNetAmount,
-      feeConfig.LINKPAY_FEE_BPS,
-      feeConfig.LINKPAY_FEE_FLAT_NGN
+      feeConfig.PLATFORM_FEE_BPS,
+      feeConfig.PLATFORM_FEE_FLAT_NGN,
     );
 
     return buildCryptoToBankRatePreview(
       rateRes.data,
       roundAmount(targetGrossAmount.div(rate)),
-      roundAmount(targetGrossAmount)
+      roundAmount(targetGrossAmount),
     );
   }
 
@@ -43,39 +40,25 @@ export class QuoteService {
     return buildBankToCryptoRatePreview(rateRes.data, input.fromAmount);
   }
 
-  buildCryptoToBankQuote(
-    quote: Awaited<ReturnType<SkyewalletClient["getSwapQuote"]>>["data"],
-    fromAmount: number
-  ) {
-    return buildCryptoToBankQuote(quote, fromAmount);
-  }
-
-  buildBankToCryptoQuote(
-    quote: Awaited<ReturnType<SkyewalletClient["getSwapQuote"]>>["data"],
-    fromAmount: number
-  ) {
-    return buildBankToCryptoQuote(quote, fromAmount);
-  }
-
   reviseQuoteFromSwap(
     direction: "crypto_to_bank" | "bank_to_crypto",
     quote: QuotePreview,
-    input: { fromAmount?: number; toAmount?: number }
+    input: { fromAmount?: number; toAmount?: number },
   ) {
     const grossAmount = roundAmount(input.toAmount ?? quote.grossAmount);
     const fromAmount = roundAmount(input.fromAmount ?? quote.fromAmount);
     const fees = calculateFee(
       grossAmount,
-      feeConfig.LINKPAY_FEE_BPS,
-      direction === "crypto_to_bank" ? feeConfig.LINKPAY_FEE_FLAT_NGN : 0
+      feeConfig.PLATFORM_FEE_BPS,
+      direction === "crypto_to_bank" ? feeConfig.PLATFORM_FEE_FLAT_NGN : 0,
     );
 
     return {
       ...quote,
       fromAmount,
       grossAmount,
-      linkpayFee: roundAmount(fees.linkpayFee),
-      netAmount: roundAmount(fees.netAmount)
+      platformFee: roundAmount(fees.platformFee),
+      netAmount: roundAmount(fees.netAmount),
     };
   }
 }
@@ -83,13 +66,13 @@ export class QuoteService {
 function buildCryptoToBankRatePreview(
   rate: Awaited<ReturnType<SkyewalletClient["getRate"]>>["data"],
   fromAmount: number,
-  grossAmountOverride?: number
+  grossAmountOverride?: number,
 ): QuotePreview {
   const grossAmount = roundAmount(grossAmountOverride ?? money(fromAmount).mul(rate.rate));
   const fees = calculateFee(
     grossAmount,
-    feeConfig.LINKPAY_FEE_BPS,
-    feeConfig.LINKPAY_FEE_FLAT_NGN
+    feeConfig.PLATFORM_FEE_BPS,
+    feeConfig.PLATFORM_FEE_FLAT_NGN,
   );
 
   return {
@@ -99,19 +82,19 @@ function buildCryptoToBankRatePreview(
     fromAmount: roundAmount(fromAmount),
     grossAmount,
     providerFee: 0,
-    linkpayFee: roundAmount(fees.linkpayFee),
+    platformFee: roundAmount(fees.platformFee),
     netAmount: roundAmount(fees.netAmount),
     rate: roundAmount(rate.rate),
-    expiresAt: undefined
+    expiresAt: undefined,
   };
 }
 
 function buildBankToCryptoRatePreview(
   rate: Awaited<ReturnType<SkyewalletClient["getRate"]>>["data"],
-  fromAmount: number
+  fromAmount: number,
 ): QuotePreview {
   const grossAmount = roundAmount(money(fromAmount).mul(rate.rate));
-  const fees = calculateFee(grossAmount, feeConfig.LINKPAY_FEE_BPS, 0);
+  const fees = calculateFee(grossAmount, feeConfig.PLATFORM_FEE_BPS, 0);
 
   return {
     quoteId: "preview",
@@ -120,23 +103,23 @@ function buildBankToCryptoRatePreview(
     fromAmount: roundAmount(fromAmount),
     grossAmount,
     providerFee: 0,
-    linkpayFee: roundAmount(fees.linkpayFee),
+    platformFee: roundAmount(fees.platformFee),
     netAmount: roundAmount(fees.netAmount),
     rate: roundAmount(rate.rate),
-    expiresAt: undefined
+    expiresAt: undefined,
   };
 }
 
-function buildCryptoToBankQuote(
+export function buildCryptoToBankQuote(
   quote: Awaited<ReturnType<SkyewalletClient["getSwapQuote"]>>["data"],
-  fromAmount: number
+  fromAmount: number,
 ): QuotePreview {
   const grossAmount = roundAmount(quote.to_amount);
   const providerFee = roundAmount(quote.fee);
   const fees = calculateFee(
     grossAmount,
-    feeConfig.LINKPAY_FEE_BPS,
-    feeConfig.LINKPAY_FEE_FLAT_NGN
+    feeConfig.PLATFORM_FEE_BPS,
+    feeConfig.PLATFORM_FEE_FLAT_NGN,
   );
 
   return {
@@ -146,20 +129,20 @@ function buildCryptoToBankQuote(
     fromAmount,
     grossAmount,
     providerFee,
-    linkpayFee: roundAmount(fees.linkpayFee),
+    platformFee: roundAmount(fees.platformFee),
     netAmount: roundAmount(fees.netAmount),
     rate: roundAmount(quote.rate),
-    expiresAt: quote.expires_at
+    expiresAt: quote.expires_at,
   };
 }
 
-function buildBankToCryptoQuote(
+export function buildBankToCryptoQuote(
   quote: Awaited<ReturnType<SkyewalletClient["getSwapQuote"]>>["data"],
-  fromAmount: number
+  fromAmount: number,
 ): QuotePreview {
   const grossAmount = roundAmount(quote.to_amount);
   const providerFee = roundAmount(quote.fee);
-  const fees = calculateFee(grossAmount, feeConfig.LINKPAY_FEE_BPS, 0);
+  const fees = calculateFee(grossAmount, feeConfig.PLATFORM_FEE_BPS, 0);
 
   return {
     quoteId: quote.quote_id,
@@ -168,18 +151,14 @@ function buildBankToCryptoQuote(
     fromAmount,
     grossAmount,
     providerFee,
-    linkpayFee: roundAmount(fees.linkpayFee),
+    platformFee: roundAmount(fees.platformFee),
     netAmount: roundAmount(fees.netAmount),
     rate: roundAmount(quote.rate),
-    expiresAt: quote.expires_at
+    expiresAt: quote.expires_at,
   };
 }
 
-function grossFromNetAmount(
-  netAmount: Decimal,
-  feeBps: number,
-  flatFee: number
-) {
+function grossFromNetAmount(netAmount: Decimal, feeBps: number, flatFee: number) {
   const percentageMultiplier = money(1).minus(money(feeBps).div(10_000));
   if (percentageMultiplier.lte(0)) {
     throw new Error("Invalid fee configuration");

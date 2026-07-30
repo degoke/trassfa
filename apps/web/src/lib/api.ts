@@ -8,7 +8,7 @@ export type QuoteResponse = {
     fromAmount: number;
     grossAmount: number;
     providerFee: number;
-    linkpayFee: number;
+    platformFee: number;
     netAmount: number;
     rate: number;
     expiresAt?: string;
@@ -186,47 +186,30 @@ export function getProfileLimits() {
 }
 
 export function getPermanentAddress() {
-  return request<{ address: PermanentAddress | null }>(
-    "/api/profile/permanent-address",
-  );
+  return request<{ address: PermanentAddress | null }>("/api/profile/permanent-address");
 }
 
 export function getPermanentAccount() {
-  return request<{ account: PermanentAccount | null }>(
-    "/api/profile/permanent-account",
-  );
+  return request<{ account: PermanentAccount | null }>("/api/profile/permanent-account");
 }
 
 export function createCryptoToBankTransaction(input: unknown) {
-  return request<{ transaction: Transaction }>(
-    "/api/transactions/crypto-to-bank",
-    {
-      method: "POST",
-      body: JSON.stringify(input),
-    },
-  );
+  return request<{ transaction: Transaction }>("/api/transactions/crypto-to-bank", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function createBankToCryptoTransaction(input: unknown) {
-  return request<{ transaction: Transaction }>(
-    "/api/transactions/bank-to-crypto",
-    {
-      method: "POST",
-      body: JSON.stringify(input),
-    },
-  );
+  return request<{ transaction: Transaction }>("/api/transactions/bank-to-crypto", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
-export function validateAddress(input: {
-  address: string;
-  currency: string;
-  network: string;
-}) {
-  return request<{ valid: boolean; message?: string }>(
-    "/api/wallets/validate",
-    {
-      method: "POST",
-      body: JSON.stringify(input),
-    },
-  );
+export function validateAddress(input: { address: string; currency: string; network: string }) {
+  return request<{ valid: boolean; message?: string }>("/api/wallets/validate", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }

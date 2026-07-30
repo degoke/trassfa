@@ -1,0 +1,15 @@
+node_modules
+dist
+.turbo
+.git
+.github
+.env
+.env.*
+!.env.example
+apps/api/.env
+apps/web/.env
+coverage
+**/.DS_Store
+skyewallet.json
+*.md
+!README.md

@@ -7,9 +7,9 @@ const app = createApp();
 serve(
   {
     fetch: app.fetch,
-    port: env.PORT
+    port: env.PORT,
   },
   (info) => {
-    console.log(`LinkPay API listening on http://localhost:${info.port}`);
-  }
+    console.log(`trassfa API listening on http://localhost:${info.port}`);
+  },
 );

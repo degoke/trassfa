@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, notInArray } from "drizzle-orm";
 import { db } from "../db/client.js";
 import {
   customerProfileTable,
@@ -12,18 +12,17 @@ import {
   type PayoutDetailsRowRaw,
   type QuotePreviewRow,
   type TransactionReferenceRow,
-  type TransactionRow
+  type TransactionRow,
 } from "../db/schema.js";
 import type {
-  BankToCryptoTransaction,
-  CryptoToBankTransaction,
   CustomerLevel,
   CustomerProfile,
-  LinkPayTransaction,
+  TrassfaTransaction,
   PayoutDetails,
   QuotePreview,
-  TransactionReference
+  TransactionReference,
 } from "../lib/domain.js";
+import { maskSensitiveIdentifier } from "../lib/encryption.js";
 
 export class TransactionRepository {
   async listByOwner(ownerUserId: string) {
@@ -43,7 +42,7 @@ export class TransactionRepository {
       this.getDestinations(ids),
       this.getQuotes(ids),
       this.getPayouts(ids),
-      this.getReferences(ids)
+      this.getReferences(ids),
     ]);
     const destMap = mapByTransactionId(destRows);
     const quoteMap = mapByTransactionId(quoteRows);
@@ -51,13 +50,20 @@ export class TransactionRepository {
     const refMap = groupReferences(refRows);
 
     return rows.map((row) =>
-      mapTransaction(row, profile, destMap.get(row.id) ?? null, quoteMap.get(row.id) ?? null, payoutMap.get(row.id) ?? null, refMap.get(row.id) ?? [])
+      mapTransaction(
+        row,
+        profile,
+        destMap.get(row.id) ?? null,
+        quoteMap.get(row.id) ?? null,
+        payoutMap.get(row.id) ?? null,
+        refMap.get(row.id) ?? [],
+      ),
     );
   }
 
   async findById(id: string) {
     const row = await db.query.transactionsTable.findFirst({
-      where: eq(transactionsTable.id, id)
+      where: eq(transactionsTable.id, id),
     });
 
     if (!row) {
@@ -69,7 +75,7 @@ export class TransactionRepository {
       this.getDestination(id),
       this.getQuote(id),
       this.getPayout(id),
-      this.getTransactionReferences(id)
+      this.getTransactionReferences(id),
     ]);
 
     return mapTransaction(row, profile, destRow, quoteRow, payoutRow, refs);
@@ -77,7 +83,7 @@ export class TransactionRepository {
 
   async findByIdForOwner(id: string, ownerUserId: string) {
     const row = await db.query.transactionsTable.findFirst({
-      where: and(eq(transactionsTable.id, id), eq(transactionsTable.ownerUserId, ownerUserId))
+      where: and(eq(transactionsTable.id, id), eq(transactionsTable.ownerUserId, ownerUserId)),
     });
 
     if (!row) {
@@ -89,13 +95,13 @@ export class TransactionRepository {
       this.getDestination(id),
       this.getQuote(id),
       this.getPayout(id),
-      this.getTransactionReferences(id)
+      this.getTransactionReferences(id),
     ]);
 
     return mapTransaction(row, profile, destRow, quoteRow, payoutRow, refs);
   }
 
-  async create(transaction: LinkPayTransaction) {
+  async create(transaction: TrassfaTransaction) {
     await db.transaction(async (tx) => {
       await tx
         .insert(customerProfileTable)
@@ -104,7 +110,7 @@ export class TransactionRepository {
           firstName: transaction.customer.firstName,
           lastName: transaction.customer.lastName,
           email: transaction.customer.email ?? null,
-          phone: transaction.customer.phone ?? null
+          phone: transaction.customer.phone ?? null,
         })
         .onConflictDoUpdate({
           target: customerProfileTable.userId,
@@ -113,8 +119,8 @@ export class TransactionRepository {
             lastName: transaction.customer.lastName,
             email: transaction.customer.email ?? null,
             phone: transaction.customer.phone ?? null,
-            updatedAt: new Date()
-          }
+            updatedAt: new Date(),
+          },
         });
 
       await tx.insert(transactionsTable).values({
@@ -124,7 +130,7 @@ export class TransactionRepository {
         status: transaction.status,
         skyewalletCustomerId: transaction.skyewalletCustomerId,
         createdAt: new Date(transaction.createdAt),
-        updatedAt: new Date(transaction.updatedAt)
+        updatedAt: new Date(transaction.updatedAt),
       });
 
       await tx.insert(quotePreviewTable).values({
@@ -135,10 +141,10 @@ export class TransactionRepository {
         fromAmount: String(transaction.quote.fromAmount),
         grossAmount: String(transaction.quote.grossAmount),
         providerFee: String(transaction.quote.providerFee),
-        linkpayFee: String(transaction.quote.linkpayFee),
+        linkpayFee: String(transaction.quote.platformFee),
         netAmount: String(transaction.quote.netAmount),
         rate: String(transaction.quote.rate),
-        expiresAt: transaction.quote.expiresAt ?? null
+        expiresAt: transaction.quote.expiresAt ?? null,
       });
 
       await tx.insert(depositBankDestinationTable).values(toDestinationRow(transaction));
@@ -149,7 +155,7 @@ export class TransactionRepository {
     return (await this.findById(transaction.id))!;
   }
 
-  async update(id: string, updater: (current: LinkPayTransaction) => LinkPayTransaction) {
+  async update(id: string, updater: (current: TrassfaTransaction) => TrassfaTransaction) {
     return await db.transaction(async (tx) => {
       const rows = await tx
         .select()
@@ -171,8 +177,8 @@ export class TransactionRepository {
       const current = mapTransaction(row, profile, destRow, quoteRow, payoutRow, refs);
       const next = {
         ...updater(current),
-        updatedAt: new Date().toISOString()
-      } satisfies LinkPayTransaction;
+        updatedAt: new Date().toISOString(),
+      } satisfies TrassfaTransaction;
 
       await tx
         .update(transactionsTable)
@@ -183,7 +189,7 @@ export class TransactionRepository {
           skyewalletCustomerId: next.skyewalletCustomerId,
           lastEvent: next.lastEvent ?? null,
           error: next.error ?? null,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(transactionsTable.id, id));
 
@@ -197,10 +203,10 @@ export class TransactionRepository {
           fromAmount: String(next.quote.fromAmount),
           grossAmount: String(next.quote.grossAmount),
           providerFee: String(next.quote.providerFee),
-          linkpayFee: String(next.quote.linkpayFee),
+          linkpayFee: String(next.quote.platformFee),
           netAmount: String(next.quote.netAmount),
           rate: String(next.quote.rate),
-          expiresAt: next.quote.expiresAt ?? null
+          expiresAt: next.quote.expiresAt ?? null,
         })
         .onConflictDoUpdate({
           target: quotePreviewTable.transactionId,
@@ -211,12 +217,12 @@ export class TransactionRepository {
             fromAmount: String(next.quote.fromAmount),
             grossAmount: String(next.quote.grossAmount),
             providerFee: String(next.quote.providerFee),
-            linkpayFee: String(next.quote.linkpayFee),
+            linkpayFee: String(next.quote.platformFee),
             netAmount: String(next.quote.netAmount),
             rate: String(next.quote.rate),
             expiresAt: next.quote.expiresAt ?? null,
-            updatedAt: new Date()
-          }
+            updatedAt: new Date(),
+          },
         });
 
       if (next.payout) {
@@ -227,7 +233,7 @@ export class TransactionRepository {
             payoutId: next.payout.id,
             status: next.payout.status,
             amount: String(next.payout.amount),
-            currency: next.payout.currency
+            currency: next.payout.currency,
           })
           .onConflictDoUpdate({
             target: payoutDetailsTable.transactionId,
@@ -236,8 +242,8 @@ export class TransactionRepository {
               status: next.payout.status,
               amount: String(next.payout.amount),
               currency: next.payout.currency,
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
           });
       }
 
@@ -250,51 +256,103 @@ export class TransactionRepository {
           skyewalletCustomerId: next.skyewalletCustomerId,
           lastEvent: next.lastEvent ?? null,
           error: next.error ?? null,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         profile,
         destRow,
         quoteRow,
-        next.payout ? { ...payoutRow!, ...toPayoutRow(next.payout) } as PayoutDetailsRowRaw : payoutRow,
-        refs
+        next.payout
+          ? ({ ...payoutRow!, ...toPayoutRow(next.payout) } as PayoutDetailsRowRaw)
+          : payoutRow,
+        refs,
       );
     });
   }
 
-  async findByReferenceValues(values: string[]) {
+  async findByReferenceValues(
+    values: string[],
+    options?: { statuses?: Array<TrassfaTransaction["status"]> },
+  ) {
     if (values.length === 0) {
       return null;
     }
 
-    const matchedReference = await db.query.transactionReferencesTable.findFirst({
-      where: inArray(transactionReferencesTable.value, values)
-    });
+    const statusFilter = options?.statuses?.length
+      ? inArray(transactionsTable.status, options.statuses)
+      : undefined;
 
-    if (!matchedReference) {
+    const matchedRows = await db
+      .select({
+        reference: transactionReferencesTable,
+        transaction: transactionsTable,
+      })
+      .from(transactionReferencesTable)
+      .innerJoin(
+        transactionsTable,
+        eq(transactionReferencesTable.transactionId, transactionsTable.id),
+      )
+      .where(
+        statusFilter
+          ? and(inArray(transactionReferencesTable.value, values), statusFilter)
+          : inArray(transactionReferencesTable.value, values),
+      )
+      .orderBy(desc(transactionsTable.createdAt))
+      .limit(1);
+
+    const matched = matchedRows[0];
+    if (!matched) {
       return null;
     }
 
-    const transaction = await this.findById(matchedReference.transactionId);
+    const transaction = await this.findById(matched.transaction.id);
     if (!transaction) {
       return null;
     }
 
     return {
       transaction,
-      matchedReference: mapReference(matchedReference)
+      matchedReference: mapReference(matched.reference),
     };
   }
 
+  async getDailyVolumeForOwner(ownerUserId: string, currency: string) {
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const rows = await db
+      .select({
+        fromAmount: quotePreviewTable.fromAmount,
+        fromCurrency: quotePreviewTable.fromCurrency,
+      })
+      .from(transactionsTable)
+      .innerJoin(quotePreviewTable, eq(quotePreviewTable.transactionId, transactionsTable.id))
+      .where(
+        and(
+          eq(transactionsTable.ownerUserId, ownerUserId),
+          gte(transactionsTable.createdAt, startOfDay),
+          notInArray(transactionsTable.status, ["failed", "expired"]),
+        ),
+      );
+
+    return rows
+      .filter((row) => row.fromCurrency === currency)
+      .reduce((total, row) => total + Number(row.fromAmount), 0);
+  }
+
   async getCustomerProfile(userId: string): Promise<CustomerProfileRow | null> {
-    return (await db.query.customerProfileTable.findFirst({
-      where: eq(customerProfileTable.userId, userId)
-    })) ?? null;
+    return (
+      (await db.query.customerProfileTable.findFirst({
+        where: eq(customerProfileTable.userId, userId),
+      })) ?? null
+    );
   }
 
   private async getDestination(transactionId: string) {
-    return (await db.query.depositBankDestinationTable.findFirst({
-      where: eq(depositBankDestinationTable.transactionId, transactionId)
-    })) ?? null;
+    return (
+      (await db.query.depositBankDestinationTable.findFirst({
+        where: eq(depositBankDestinationTable.transactionId, transactionId),
+      })) ?? null
+    );
   }
 
   private async getDestinations(transactionIds: string[]) {
@@ -306,9 +364,11 @@ export class TransactionRepository {
   }
 
   private async getQuote(transactionId: string) {
-    return (await db.query.quotePreviewTable.findFirst({
-      where: eq(quotePreviewTable.transactionId, transactionId)
-    })) ?? null;
+    return (
+      (await db.query.quotePreviewTable.findFirst({
+        where: eq(quotePreviewTable.transactionId, transactionId),
+      })) ?? null
+    );
   }
 
   private async getQuotes(transactionIds: string[]) {
@@ -320,9 +380,11 @@ export class TransactionRepository {
   }
 
   private async getPayout(transactionId: string) {
-    return (await db.query.payoutDetailsTable.findFirst({
-      where: eq(payoutDetailsTable.transactionId, transactionId)
-    })) ?? null;
+    return (
+      (await db.query.payoutDetailsTable.findFirst({
+        where: eq(payoutDetailsTable.transactionId, transactionId),
+      })) ?? null
+    );
   }
 
   private async getPayouts(transactionIds: string[]) {
@@ -384,18 +446,20 @@ export class TransactionRepository {
     return tx
       .select()
       .from(transactionReferencesTable)
-      .where(eq(transactionReferencesTable.transactionId, transactionId)) as Promise<TransactionReferenceRow[]>;
+      .where(eq(transactionReferencesTable.transactionId, transactionId)) as Promise<
+      TransactionReferenceRow[]
+    >;
   }
 
   private async insertReferences(
     tx: any,
     transactionId: string,
-    references: TransactionReference[]
+    references: TransactionReference[],
   ) {
     const deduped = uniqueReferences(references).map((reference) => ({
       transactionId,
       type: reference.type,
-      value: reference.value
+      value: reference.value,
     }));
 
     if (deduped.length === 0) {
@@ -409,8 +473,8 @@ export class TransactionRepository {
         target: [
           transactionReferencesTable.transactionId,
           transactionReferencesTable.type,
-          transactionReferencesTable.value
-        ]
+          transactionReferencesTable.value,
+        ],
       });
   }
 }
@@ -421,8 +485,8 @@ function mapTransaction(
   destRow: DepositBankDestinationRow | null,
   quoteRow: QuotePreviewRow | null,
   payoutRow: PayoutDetailsRowRaw | null,
-  referenceRows: TransactionReferenceRow[]
-): LinkPayTransaction {
+  referenceRows: TransactionReferenceRow[],
+): TrassfaTransaction {
   const base = {
     id: row.id,
     ownerUserId: row.ownerUserId,
@@ -430,17 +494,24 @@ function mapTransaction(
     status: row.status,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    customer: profile ? mapCustomerProfile(profile) : ({
-      firstName: "", lastName: "", level: 0 as CustomerLevel,
-      bvnVerified: false, ninVerified: false, phoneVerified: false, addressVerified: false,
-      country: "NG"
-    } satisfies CustomerProfile),
+    customer: profile
+      ? mapCustomerProfile(profile)
+      : ({
+          firstName: "",
+          lastName: "",
+          level: 0 as CustomerLevel,
+          bvnVerified: false,
+          ninVerified: false,
+          phoneVerified: false,
+          addressVerified: false,
+          country: "NG",
+        } satisfies CustomerProfile),
     skyewalletCustomerId: row.skyewalletCustomerId,
     quote: quoteRow ? mapQuotePreview(quoteRow) : ({} as QuotePreview),
     payout: payoutRow ? mapPayoutDetails(payoutRow) : undefined,
     references: referenceRows.map(mapReference),
     lastEvent: row.lastEvent ?? undefined,
-    error: row.error ?? undefined
+    error: row.error ?? undefined,
   };
 
   if (row.direction === "crypto_to_bank") {
@@ -453,15 +524,15 @@ function mapTransaction(
         amount: Number(destRow?.depositAmount ?? 0),
         accountId: destRow?.depositAccountId ?? "",
         address: destRow?.depositAddress ?? "",
-        expiresAt: destRow?.depositExpiresAt ?? undefined
+        expiresAt: destRow?.depositExpiresAt ?? undefined,
       },
       bankDestination: {
         countryCode: destRow?.bankCountryCode ?? "",
         bankCode: destRow?.bankCode ?? "",
         bankName: destRow?.bankName ?? undefined,
         accountNumber: destRow?.bankAccountNumber ?? "",
-        accountName: destRow?.bankAccountName ?? ""
-      }
+        accountName: destRow?.bankAccountName ?? "",
+      },
     };
   }
 
@@ -478,17 +549,17 @@ function mapTransaction(
     payoutDestination: {
       address: destRow?.payoutAddress ?? "",
       currency: destRow?.payoutCurrency ?? "",
-      network: destRow?.payoutNetwork ?? ""
-    }
+      network: destRow?.payoutNetwork ?? "",
+    },
   };
 }
 
 function toDestinationRow(
-  transaction: LinkPayTransaction
+  transaction: TrassfaTransaction,
 ): typeof depositBankDestinationTable.$inferInsert {
   const base = {
     transactionId: transaction.id,
-    direction: transaction.direction
+    direction: transaction.direction,
   };
 
   if (transaction.direction === "crypto_to_bank") {
@@ -504,7 +575,7 @@ function toDestinationRow(
       bankCode: transaction.bankDestination.bankCode,
       bankName: transaction.bankDestination.bankName ?? null,
       bankAccountNumber: transaction.bankDestination.accountNumber,
-      bankAccountName: transaction.bankDestination.accountName
+      bankAccountName: transaction.bankDestination.accountName,
     };
   }
 
@@ -517,7 +588,7 @@ function toDestinationRow(
     virtualAccountExpiresAt: transaction.virtualAccount.expiresAt ?? null,
     payoutAddress: transaction.payoutDestination.address,
     payoutCurrency: transaction.payoutDestination.currency,
-    payoutNetwork: transaction.payoutDestination.network
+    payoutNetwork: transaction.payoutDestination.network,
   };
 }
 
@@ -526,7 +597,7 @@ function toPayoutRow(payout: PayoutDetails): Partial<PayoutDetailsRowRaw> {
     payoutId: payout.id,
     status: payout.status,
     amount: String(payout.amount),
-    currency: payout.currency
+    currency: payout.currency,
   } as Partial<PayoutDetailsRowRaw>;
 }
 
@@ -541,13 +612,13 @@ function mapCustomerProfile(row: CustomerProfileRow): CustomerProfile {
     ninVerified: row.ninVerified,
     phoneVerified: row.phoneVerified,
     addressVerified: row.addressVerified,
-    bvn: row.bvn ?? undefined,
-    nin: row.nin ?? undefined,
+    bvn: maskSensitiveIdentifier(row.bvn),
+    nin: maskSensitiveIdentifier(row.nin),
     address: row.address ?? undefined,
     city: row.city ?? undefined,
     state: row.state ?? undefined,
     country: row.country,
-    dateOfBirth: row.dateOfBirth ?? undefined
+    dateOfBirth: row.dateOfBirth ?? undefined,
   };
 }
 
@@ -559,10 +630,10 @@ function mapQuotePreview(row: QuotePreviewRow): QuotePreview {
     fromAmount: Number(row.fromAmount),
     grossAmount: Number(row.grossAmount),
     providerFee: Number(row.providerFee),
-    linkpayFee: Number(row.linkpayFee),
+    platformFee: Number(row.linkpayFee),
     netAmount: Number(row.netAmount),
     rate: Number(row.rate),
-    expiresAt: row.expiresAt ?? undefined
+    expiresAt: row.expiresAt ?? undefined,
   };
 }
 
@@ -571,14 +642,14 @@ function mapPayoutDetails(row: PayoutDetailsRowRaw): PayoutDetails {
     id: row.payoutId,
     status: row.status,
     amount: Number(row.amount),
-    currency: row.currency
+    currency: row.currency,
   };
 }
 
 function mapReference(reference: TransactionReferenceRow): TransactionReference {
   return {
     type: reference.type as TransactionReference["type"],
-    value: reference.value
+    value: reference.value,
   };
 }
 

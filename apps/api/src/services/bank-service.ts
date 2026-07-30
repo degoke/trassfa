@@ -23,14 +23,14 @@ export class BankService {
     const resolved = await this.skyewallet.resolveBankAccount({
       country_code: input.countryCode ?? "NG",
       bank_code: bankCode,
-      account_number: input.accountNumber
+      account_number: input.accountNumber,
     });
 
     return {
       accountName: resolved.data.account_name,
       bankCode: resolved.data.bank_code,
       accountNumber: resolved.data.account_number,
-      countryCode: input.countryCode ?? "NG"
+      countryCode: input.countryCode ?? "NG",
     };
   }
 
@@ -41,7 +41,7 @@ export class BankService {
       (b) =>
         b.name.toLowerCase().trim() === normalized ||
         b.slug.toLowerCase().trim() === normalized ||
-        b.code.toLowerCase().trim() === normalized
+        b.code.toLowerCase().trim() === normalized,
     );
 
     return bank?.code;

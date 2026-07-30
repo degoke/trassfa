@@ -28,12 +28,7 @@ export function AppHomePage() {
   }
 
   if (!session?.user) {
-    return (
-      <AuthRequired
-        title="App access"
-        message="Sign in to start a send or receive flow."
-      />
-    );
+    return <AuthRequired title="App access" message="Sign in to start a send or receive flow." />;
   }
 
   return (
@@ -72,9 +67,7 @@ export function AppHomePage() {
           </div>
         ) : null}
         {!loading && !error
-          ? transactions
-              .slice(0, 4)
-              .map((tx) => <TransactionListItem key={tx.id} tx={tx} />)
+          ? transactions.slice(0, 4).map((tx) => <TransactionListItem key={tx.id} tx={tx} />)
           : null}
       </section>
     </div>

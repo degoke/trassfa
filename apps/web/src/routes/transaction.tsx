@@ -19,19 +19,9 @@ import {
   getTransactionDirectionLabel,
   statusLabel,
 } from "../lib/transaction-ui";
-import {
-  formatCountdown,
-  useRefreshCountdown,
-  useSecondsRemaining,
-} from "../lib/timers";
+import { formatCountdown, useRefreshCountdown, useSecondsRemaining } from "../lib/timers";
 
-function DetailRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="summary-row">
       <span>{label}</span>
@@ -40,13 +30,7 @@ function DetailRow({
   );
 }
 
-function DetailSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mobile-card mobile-card-spaced">
       <span className="section-label">{title}</span>
@@ -96,7 +80,7 @@ export function TransactionPage() {
   }, [tx?.id, tx?.status]);
 
   const activeQuote =
-    tx?.status === "awaiting_payment" ? liveQuote ?? tx.quote : tx?.quote ?? null;
+    tx?.status === "awaiting_payment" ? (liveQuote ?? tx.quote) : (tx?.quote ?? null);
   const paymentExpirySeconds = useSecondsRemaining(
     tx?.direction === "crypto_to_bank"
       ? tx.deposit.expiresAt
@@ -114,8 +98,10 @@ export function TransactionPage() {
 
     if (
       currentTx.direction === "crypto_to_bank"
-        ? currentTx.deposit.expiresAt && new Date(currentTx.deposit.expiresAt).getTime() <= Date.now()
-        : currentTx.virtualAccount.expiresAt && new Date(currentTx.virtualAccount.expiresAt).getTime() <= Date.now()
+        ? currentTx.deposit.expiresAt &&
+          new Date(currentTx.deposit.expiresAt).getTime() <= Date.now()
+        : currentTx.virtualAccount.expiresAt &&
+          new Date(currentTx.virtualAccount.expiresAt).getTime() <= Date.now()
     ) {
       return;
     }
@@ -138,9 +124,7 @@ export function TransactionPage() {
       setLiveQuote(response.quote);
       setError(null);
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Unable to refresh live quote",
-      );
+      setError(reason instanceof Error ? reason.message : "Unable to refresh live quote");
     } finally {
       setIsRefreshingQuote(false);
     }
@@ -171,10 +155,7 @@ export function TransactionPage() {
     return (
       <div className="mobile-screen">
         <p className="error-text">{error}</p>
-        <Link
-          to="/app/transactions"
-          className="button button-secondary button-block"
-        >
+        <Link to="/app/transactions" className="button button-secondary button-block">
           Back to history
         </Link>
       </div>
@@ -185,10 +166,7 @@ export function TransactionPage() {
     return (
       <div className="mobile-screen">
         <p className="screen-message">Transaction not found.</p>
-        <Link
-          to="/app/transactions"
-          className="button button-secondary button-block"
-        >
+        <Link to="/app/transactions" className="button button-secondary button-block">
           Back to history
         </Link>
       </div>
@@ -370,7 +348,9 @@ export function TransactionPage() {
       <section className="mobile-card mobile-card-spaced">
         <div className="summary-row">
           <span>Status</span>
-          <span className={`status-badge ${isPaymentExpired ? "status-expired" : `status-${tx.status}`}`}>
+          <span
+            className={`status-badge ${isPaymentExpired ? "status-expired" : `status-${tx.status}`}`}
+          >
             {isPaymentExpired ? statusLabel("expired") : statusLabel(tx.status)}
           </span>
         </div>
@@ -381,8 +361,8 @@ export function TransactionPage() {
           </p>
         ) : isEstimate ? (
           <p className="muted">
-            This transaction is still using a live estimate. Once payment is received,
-            the quote locks and the payout continues automatically.
+            This transaction is still using a live estimate. Once payment is received, the quote
+            locks and the payout continues automatically.
           </p>
         ) : null}
         {error ? <p className="error-text">{error}</p> : null}
@@ -395,10 +375,7 @@ export function TransactionPage() {
           >
             View receipt
           </Link>
-          <Link
-            to="/app/transactions"
-            className="button button-secondary button-block"
-          >
+          <Link to="/app/transactions" className="button button-secondary button-block">
             Back to history
           </Link>
         </div>
@@ -448,8 +425,8 @@ export function TransactionPage() {
         </DetailRow>
         <DetailRow label="trassfa fee">
           {tx.direction === "crypto_to_bank"
-            ? formatNaira(displayQuote.linkpayFee)
-            : formatAsset(displayQuote.linkpayFee, displayQuote.toCurrency)}
+            ? formatNaira(displayQuote.platformFee)
+            : formatAsset(displayQuote.platformFee, displayQuote.toCurrency)}
         </DetailRow>
         <DetailRow label={isEstimate ? "Estimated payout" : "Payout amount"}>
           {payoutValue}
@@ -477,9 +454,7 @@ export function TransactionPage() {
       {tx.payout ? (
         <DetailSection title="Payout">
           <DetailRow label="Status">{tx.payout.status}</DetailRow>
-          <DetailRow label="Amount">
-            {formatAsset(tx.payout.amount, tx.payout.currency)}
-          </DetailRow>
+          <DetailRow label="Amount">{formatAsset(tx.payout.amount, tx.payout.currency)}</DetailRow>
           <DetailRow label="Reference">
             <span className="mono">{tx.payout.id}</span>
           </DetailRow>

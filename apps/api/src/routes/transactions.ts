@@ -2,18 +2,15 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { AppVariables } from "../lib/app-context.js";
 import { TransactionService } from "../services/transaction-service.js";
-import {
-  bankToCryptoTransactionSchema,
-  cryptoToBankTransactionSchema
-} from "./schemas.js";
-import { requireAuth, requireAuthenticatedUser } from "./middleware.js";
+import { bankToCryptoTransactionSchema, cryptoToBankTransactionSchema } from "./schemas.js";
+import { requireAuth, requireAuthenticatedUser, requireVerifiedEmail } from "./middleware.js";
 
 export function createTransactionRoutes(transactionService: TransactionService) {
   const app = new Hono<{
     Variables: AppVariables;
   }>();
 
-  app.use("*", requireAuth);
+  app.use("*", requireAuth, requireVerifiedEmail);
 
   app.get("/api/transactions", async (c) => {
     const user = requireAuthenticatedUser(c);
@@ -40,7 +37,7 @@ export function createTransactionRoutes(transactionService: TransactionService) 
       const body = c.req.valid("json");
       const transaction = await transactionService.createCryptoToBankTransaction(user, body);
       return c.json({ transaction }, 201);
-    }
+    },
   );
 
   app.post(
@@ -51,7 +48,7 @@ export function createTransactionRoutes(transactionService: TransactionService) 
       const body = c.req.valid("json");
       const transaction = await transactionService.createBankToCryptoTransaction(user, body);
       return c.json({ transaction }, 201);
-    }
+    },
   );
 
   return app;

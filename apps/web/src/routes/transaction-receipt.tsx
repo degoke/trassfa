@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { AuthRequired } from "../components/auth-required";
-import {
-  getTransaction,
-  type QuoteResponse,
-  type Transaction,
-} from "../lib/api";
+import { getTransaction, type QuoteResponse, type Transaction } from "../lib/api";
 import { authClient } from "../lib/auth-client";
 import { useLiveTransaction } from "../lib/live-transaction";
 import {
@@ -69,22 +65,14 @@ export function TransactionReceiptPage() {
   }
 
   if (!session?.user) {
-    return (
-      <AuthRequired
-        title="Receipt"
-        message="Sign in to view transaction receipts."
-      />
-    );
+    return <AuthRequired title="Receipt" message="Sign in to view transaction receipts." />;
   }
 
   if (error && !tx) {
     return (
       <div className="mobile-screen">
         <p className="error-text">{error}</p>
-        <Link
-          to="/app/transactions"
-          className="button button-secondary button-block"
-        >
+        <Link to="/app/transactions" className="button button-secondary button-block">
           Back to history
         </Link>
       </div>
@@ -95,10 +83,7 @@ export function TransactionReceiptPage() {
     return (
       <div className="mobile-screen">
         <p className="screen-message">Transaction not found.</p>
-        <Link
-          to="/app/transactions"
-          className="button button-secondary button-block"
-        >
+        <Link to="/app/transactions" className="button button-secondary button-block">
           Back to history
         </Link>
       </div>
@@ -148,9 +133,7 @@ export function TransactionReceiptPage() {
       <section className="mobile-card mobile-card-spaced receipt-sheet">
         <div className="receipt-header">
           <span className="section-label">Receipt</span>
-          <span className={`status-badge status-${tx.status}`}>
-            {statusLabel(tx.status)}
-          </span>
+          <span className={`status-badge status-${tx.status}`}>{statusLabel(tx.status)}</span>
         </div>
 
         <div className="receipt-amount">
@@ -182,29 +165,15 @@ export function TransactionReceiptPage() {
             {tx.direction === "crypto_to_bank" ? (
               <>
                 <ReceiptRow label="Recipient" value={tx.bankDestination.accountName} />
-                <ReceiptRow
-                  label="Account"
-                  value={tx.bankDestination.accountNumber}
-                  mono
-                />
+                <ReceiptRow label="Account" value={tx.bankDestination.accountNumber} mono />
               </>
             ) : (
               <>
-                <ReceiptRow
-                  label="Wallet"
-                  value={tx.payoutDestination.address}
-                  mono
-                />
+                <ReceiptRow label="Wallet" value={tx.payoutDestination.address} mono />
                 <ReceiptRow label="Network" value={tx.payoutDestination.network} />
               </>
             )}
-            {tx.payout ? (
-              <ReceiptRow
-                label="Payout ref"
-                value={tx.payout.id}
-                mono
-              />
-            ) : null}
+            {tx.payout ? <ReceiptRow label="Payout ref" value={tx.payout.id} mono /> : null}
           </div>
         </div>
 

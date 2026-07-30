@@ -37,16 +37,12 @@ export function formatNaira(amount: number | null | undefined) {
   }).format(amount);
 }
 
-export function formatAsset(
-  amount: number | string | null | undefined,
-  currency?: string,
-) {
+export function formatAsset(amount: number | string | null | undefined, currency?: string) {
   if (amount == null || amount === "") {
     return currency ? `-- ${currency}` : "--";
   }
 
-  const numericAmount =
-    typeof amount === "string" ? Number.parseFloat(amount) : amount;
+  const numericAmount = typeof amount === "string" ? Number.parseFloat(amount) : amount;
   const formattedAmount = Number.isFinite(numericAmount)
     ? new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 0,
@@ -181,9 +177,7 @@ export function buildReceiptShareText(tx: Transaction) {
   if (tx.direction === "crypto_to_bank") {
     lines.push(`${formatNaira(tx.quote.netAmount)} — ${payoutLabel}`);
   } else {
-    lines.push(
-      `${formatAsset(tx.quote.netAmount, tx.quote.toCurrency)} — ${payoutLabel}`,
-    );
+    lines.push(`${formatAsset(tx.quote.netAmount, tx.quote.toCurrency)} — ${payoutLabel}`);
   }
   lines.push("");
 

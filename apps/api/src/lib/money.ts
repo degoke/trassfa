@@ -5,7 +5,7 @@ Decimal.set({ precision: 36 });
 export { Decimal };
 
 export type FeeBreakdown = {
-  linkpayFee: number;
+  platformFee: number;
   netAmount: number;
 };
 
@@ -24,16 +24,16 @@ export function formatAmount(value: Decimal.Value, places = 6): string {
 export function calculateFee(
   grossAmount: Decimal.Value,
   feeBps: number,
-  flatFee: Decimal.Value = 0
+  flatFee: Decimal.Value = 0,
 ): FeeBreakdown {
   const gross = money(grossAmount);
   const percentageFee = gross.mul(feeBps).div(10000);
-  const linkpayFee = percentageFee.plus(flatFee);
-  const netAmount = Decimal.max(gross.minus(linkpayFee), 0);
+  const platformFee = percentageFee.plus(flatFee);
+  const netAmount = Decimal.max(gross.minus(platformFee), 0);
 
   return {
-    linkpayFee: roundAmount(linkpayFee),
-    netAmount: roundAmount(netAmount)
+    platformFee: roundAmount(platformFee),
+    netAmount: roundAmount(netAmount),
   };
 }
 

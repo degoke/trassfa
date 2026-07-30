@@ -3,9 +3,10 @@ export function normalizePhone(raw: string): string {
 
   const stripped = cleaned.replace(/\+/g, "");
 
-  const deduped = stripped.startsWith("234") && stripped.slice(3).startsWith("234")
-    ? stripped.slice(3)
-    : stripped;
+  const deduped =
+    stripped.startsWith("234") && stripped.slice(3).startsWith("234")
+      ? stripped.slice(3)
+      : stripped;
 
   if (deduped.startsWith("234") && deduped.length >= 13) {
     return deduped;

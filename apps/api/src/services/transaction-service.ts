@@ -1,9 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db/client.js";
-import {
-  customerProfileTable,
-  type CustomerProfileRow
-} from "../db/schema.js";
+import { customerProfileTable, type CustomerProfileRow } from "../db/schema.js";
 import type {
   AuthenticatedUserProfile,
   BankToCryptoTransaction,
@@ -11,31 +8,29 @@ import type {
   CustomerLevel,
   QuotePreview,
   SkyewalletWebhookEvent,
-  TransactionReference
+  TransactionReference,
 } from "../lib/domain.js";
 import { formatAmount, toNumber } from "../lib/money.js";
 import { createId } from "../lib/ids.js";
 import { normalizePhone } from "../lib/phone.js";
 import { SkyewalletClient } from "../lib/skyewallet.js";
-import {
-  extractReferenceValues,
-  getWebhookDataValue
-} from "../lib/skyewallet-webhooks.js";
+import { extractReferenceValues, getWebhookDataValue } from "../lib/skyewallet-webhooks.js";
 import { TransactionRepository } from "../repositories/transaction-repository.js";
 import type {
   BankToCryptoTransactionInput,
-  CryptoToBankTransactionInput
+  CryptoToBankTransactionInput,
 } from "../routes/schemas.js";
 import { currencyLevelLimits } from "../config/limits.js";
+import { maskSensitiveIdentifier } from "../lib/encryption.js";
 import { BankService } from "./bank-service.js";
-import { QuoteService } from "./quote-service.js";
+import { buildBankToCryptoQuote, buildCryptoToBankQuote, QuoteService } from "./quote-service.js";
 
 export class TransactionService {
   constructor(
     private readonly transactions: TransactionRepository,
     private readonly skyewallet: SkyewalletClient,
     private readonly quotes: QuoteService,
-    private readonly banks: BankService
+    private readonly banks: BankService,
   ) {}
 
   listTransactions(ownerUserId: string) {
@@ -48,19 +43,18 @@ export class TransactionService {
 
   async createCryptoToBankTransaction(
     owner: AuthenticatedUserProfile,
-    input: CryptoToBankTransactionInput
+    input: CryptoToBankTransactionInput,
   ) {
     const id = createId("lp");
     const payinReference = buildPayReference(id, "payin");
     const profile = await this.ensureProfile(owner);
-    const limits = getLevelLimits(profile.level, input.deposit.fromCurrency);
     const quote = await this.quotes.quoteCryptoToBank(input.deposit);
-
-    if (quote.fromAmount > limits.maxTransactionAmount) {
-      throw new Error(
-        `Amount exceeds your level limit of ${limits.maxTransactionAmount}. Upgrade your account to increase limits.`
-      );
-    }
+    await this.assertWithinLimits(
+      owner.id,
+      profile.level,
+      input.deposit.fromCurrency,
+      quote.fromAmount,
+    );
 
     const resolvedBank = await this.banks.resolveBankAccount(input.bank);
 
@@ -75,7 +69,7 @@ export class TransactionService {
       type: "dynamic",
       currency: input.deposit.fromCurrency,
       network: input.deposit.network,
-      amount: formatAmount(quote.fromAmount)
+      amount: formatAmount(quote.fromAmount),
     });
 
     if (!payinRes.data.payin.account.address) {
@@ -85,7 +79,7 @@ export class TransactionService {
     depositAccount = {
       id: payinRes.data.payin.account.id,
       address: payinRes.data.payin.account.address,
-      expiresAt: payinRes.data.payin.account.expires_at ?? undefined
+      expiresAt: payinRes.data.payin.account.expires_at ?? undefined,
     };
 
     const transaction: CryptoToBankTransaction = {
@@ -103,14 +97,14 @@ export class TransactionService {
         amount: quote.fromAmount,
         accountId: depositAccount.id,
         address: depositAccount.address,
-        expiresAt: depositAccount.expiresAt
+        expiresAt: depositAccount.expiresAt,
       },
       bankDestination: {
         countryCode: resolvedBank.countryCode,
         bankCode: resolvedBank.bankCode,
         bankName: input.bank.bankName,
         accountNumber: resolvedBank.accountNumber,
-        accountName: resolvedBank.accountName
+        accountName: resolvedBank.accountName,
       },
       quote,
       references: [
@@ -118,8 +112,8 @@ export class TransactionService {
         { type: "customer", value: customerId },
         { type: "pay_reference", value: payinReference },
         { type: "payment_account", value: depositAccount.id },
-        { type: "payment_address", value: depositAccount.address }
-      ]
+        { type: "payment_address", value: depositAccount.address },
+      ],
     };
 
     return this.transactions.create(transaction);
@@ -127,40 +121,42 @@ export class TransactionService {
 
   async createBankToCryptoTransaction(
     owner: AuthenticatedUserProfile,
-    input: BankToCryptoTransactionInput
+    input: BankToCryptoTransactionInput,
   ) {
     const id = createId("lp");
     const payinReference = buildPayReference(id, "payin");
     const profile = await this.ensureProfile(owner);
-    const limits = getLevelLimits(profile.level, "NGN");
-
-    if (input.fiat.amount > limits.maxTransactionAmount) {
-      throw new Error(
-        `Amount exceeds your level limit of ${limits.maxTransactionAmount}. Upgrade your account to increase limits.`
-      );
-    }
+    await this.assertWithinLimits(owner.id, profile.level, "NGN", input.fiat.amount);
 
     const validation = await this.skyewallet.validateAddress({
       address: input.wallet.address,
       currency: input.wallet.currency,
-      network: input.wallet.network
+      network: input.wallet.network,
     });
 
     if (!validation.data.valid) {
       throw new Error(
-        validation.error?.message ?? `Invalid ${input.wallet.currency} address for ${input.wallet.network} network`
+        validation.error?.message ??
+          `Invalid ${input.wallet.currency} address for ${input.wallet.network} network`,
       );
     }
 
     const quote = await this.quotes.quoteBankToCrypto({
       fromAmount: input.fiat.amount,
       toCurrency: input.wallet.currency,
-      network: input.wallet.network
+      network: input.wallet.network,
     });
 
     const customerId = await this.ensureSkyewalletCustomer(profile, id, "bank_to_crypto");
 
-    let virtualAccount: { accountId: string; bankName: string; accountNumber: string; accountName: string; address?: string; expiresAt?: string };
+    let virtualAccount: {
+      accountId: string;
+      bankName: string;
+      accountNumber: string;
+      accountName: string;
+      address?: string;
+      expiresAt?: string;
+    };
 
     const payinRes = await this.skyewallet.createPayin({
       method: "bank_transfer",
@@ -168,7 +164,7 @@ export class TransactionService {
       pay_reference: payinReference,
       type: "dynamic",
       currency: "NGN",
-      amount: formatAmount(input.fiat.amount)
+      amount: formatAmount(input.fiat.amount),
     });
 
     const account = payinRes.data.payin.account;
@@ -183,7 +179,7 @@ export class TransactionService {
       accountNumber: account.account_number,
       accountName: account.account_name,
       address: account.address ?? undefined,
-      expiresAt: account.expires_at ?? undefined
+      expiresAt: account.expires_at ?? undefined,
     };
 
     const transaction: BankToCryptoTransaction = {
@@ -199,7 +195,7 @@ export class TransactionService {
       payoutDestination: {
         address: input.wallet.address,
         currency: input.wallet.currency,
-        network: input.wallet.network
+        network: input.wallet.network,
       },
       quote,
       references: [
@@ -208,8 +204,10 @@ export class TransactionService {
         { type: "pay_reference", value: payinReference },
         { type: "payment_account", value: virtualAccount.accountId },
         { type: "virtual_account", value: virtualAccount.accountNumber },
-        ...(virtualAccount.address ? [{ type: "payment_address" as const, value: virtualAccount.address }] : [])
-      ]
+        ...(virtualAccount.address
+          ? [{ type: "payment_address" as const, value: virtualAccount.address }]
+          : []),
+      ],
     };
 
     return this.transactions.create(transaction);
@@ -229,20 +227,20 @@ export class TransactionService {
       .insert(customerProfileTable)
       .values({
         userId: owner.id,
-        firstName: firstName || "LinkPay",
+        firstName: firstName || "trassfa",
         lastName: lastName || "User",
         email: owner.email,
-        phone: owner.phone
+        phone: owner.phone,
       })
       .onConflictDoUpdate({
         target: customerProfileTable.userId,
         set: {
-          firstName: firstName || "LinkPay",
+          firstName: firstName || "trassfa",
           lastName: lastName || "User",
           email: owner.email,
           phone: owner.phone,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       })
       .returning();
 
@@ -257,10 +255,12 @@ export class TransactionService {
   private async ensureSkyewalletCustomer(
     profile: CustomerProfileRow,
     transactionId: string,
-    flow: string
+    flow: string,
   ): Promise<string> {
     if (!profile.phone) {
-      throw new Error("Phone number is required to create a Skyewallet customer. Please add a phone number to your profile.");
+      throw new Error(
+        "Phone number is required to create a Skyewallet customer. Please add a phone number to your profile.",
+      );
     }
 
     const customer = await this.skyewallet.getOrCreateCustomer({
@@ -270,8 +270,8 @@ export class TransactionService {
       phone: normalizePhone(profile.phone),
       metadata: {
         linkpay_transaction_id: transactionId,
-        flow
-      }
+        flow,
+      },
     });
 
     if (profile.skyewalletCustomerId !== customer.id) {
@@ -302,7 +302,7 @@ export class TransactionService {
         return this.handleSwapFailed(event);
       default:
         return {
-          status: "ignored" as const
+          status: "ignored" as const,
         };
     }
   }
@@ -317,12 +317,12 @@ export class TransactionService {
     if (transaction.status !== "awaiting_payment" && transaction.status !== "failed") {
       await this.transactions.update(transaction.id, (current) => ({
         ...current,
-        lastEvent: event
+        lastEvent: event,
       }));
 
       return {
         status: "processed" as const,
-        matchedTransactionId: transaction.id
+        matchedTransactionId: transaction.id,
       };
     }
 
@@ -337,10 +337,10 @@ export class TransactionService {
         : appendReferences(current.references, [
             {
               type: "provider_transaction",
-              value: valueOrEmpty(getWebhookDataValue(event, "transaction_id"))
-            }
+              value: valueOrEmpty(getWebhookDataValue(event, "transaction_id")),
+            },
           ]),
-      lastEvent: event
+      lastEvent: event,
     }));
 
     try {
@@ -351,15 +351,13 @@ export class TransactionService {
       }
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to process payment after receipt";
+        error instanceof Error ? error.message : "Unable to process payment after receipt";
 
       await this.transactions.update(transaction.id, (current) => ({
         ...current,
         status: current.payout ? current.status : "failed",
         error: current.payout ? current.error : message,
-        lastEvent: event
+        lastEvent: event,
       }));
 
       throw error;
@@ -367,7 +365,7 @@ export class TransactionService {
 
     return {
       status: "processed" as const,
-      matchedTransactionId: transaction.id
+      matchedTransactionId: transaction.id,
     };
   }
 
@@ -386,13 +384,13 @@ export class TransactionService {
         ...current,
         status: "expired",
         error: "Payment account expired before funds were received",
-        lastEvent: event
+        lastEvent: event,
       };
     });
 
     return {
       status: "processed" as const,
-      matchedTransactionId: match.transaction.id
+      matchedTransactionId: match.transaction.id,
     };
   }
 
@@ -413,16 +411,16 @@ export class TransactionService {
         payout: current.payout
           ? {
               ...current.payout,
-              status: "completed"
+              status: "completed",
             }
           : current.payout,
-        lastEvent: event
+        lastEvent: event,
       };
     });
 
     return {
       status: "processed" as const,
-      matchedTransactionId: match.transaction.id
+      matchedTransactionId: match.transaction.id,
     };
   }
 
@@ -443,20 +441,18 @@ export class TransactionService {
         payout: current.payout
           ? {
               ...current.payout,
-              status: "failed"
+              status: "failed",
             }
           : current.payout,
         error:
-          typeof event.data.reason === "string"
-            ? event.data.reason
-            : "Skyewallet transfer failed",
-        lastEvent: event
+          typeof event.data.reason === "string" ? event.data.reason : "Skyewallet transfer failed",
+        lastEvent: event,
       };
     });
 
     return {
       status: "processed" as const,
-      matchedTransactionId: match.transaction.id
+      matchedTransactionId: match.transaction.id,
     };
   }
 
@@ -468,12 +464,12 @@ export class TransactionService {
 
     await this.transactions.update(match.transaction.id, (current) => ({
       ...current,
-      lastEvent: event
+      lastEvent: event,
     }));
 
     return {
       status: "processed" as const,
-      matchedTransactionId: match.transaction.id
+      matchedTransactionId: match.transaction.id,
     };
   }
 
@@ -484,30 +480,31 @@ export class TransactionService {
     }
 
     await this.transactions.update(match.transaction.id, (current) => {
-      if (current.status === "failed" || current.status === "completed" || current.status === "payout_pending") {
+      if (
+        current.status === "failed" ||
+        current.status === "completed" ||
+        current.status === "payout_pending"
+      ) {
         return { ...current, lastEvent: event };
       }
 
       return {
         ...current,
         status: "failed",
-        error:
-          typeof event.data.reason === "string"
-            ? event.data.reason
-            : "Swap failed",
-        lastEvent: event
+        error: typeof event.data.reason === "string" ? event.data.reason : "Swap failed",
+        lastEvent: event,
       };
     });
 
     return {
       status: "processed" as const,
-      matchedTransactionId: match.transaction.id
+      matchedTransactionId: match.transaction.id,
     };
   }
 
   private async startCryptoToBankSwap(
     transaction: CryptoToBankTransaction,
-    event: SkyewalletWebhookEvent
+    event: SkyewalletWebhookEvent,
   ) {
     const payoutReference = buildPayReference(transaction.id, "payout");
     const receivedAmount =
@@ -516,15 +513,15 @@ export class TransactionService {
     const quoteRes = await this.skyewallet.getSwapQuote({
       from_currency: transaction.deposit.currency,
       to_currency: "NGN",
-      from_amount: formatAmount(receivedAmount)
+      from_amount: formatAmount(receivedAmount),
     });
-    const preview = this.quotes.buildCryptoToBankQuote(quoteRes.data, receivedAmount);
+    const preview = buildCryptoToBankQuote(quoteRes.data, receivedAmount);
     const swapRes = await this.skyewallet.executeSwap(quoteRes.data.quote_id);
     const lockedQuote = lockQuote(
       this.quotes.reviseQuoteFromSwap(transaction.direction, preview, {
         fromAmount: toNumber(swapRes.data.from_amount, preview.fromAmount),
-        toAmount: toNumber(swapRes.data.to_amount, preview.grossAmount)
-      })
+        toAmount: toNumber(swapRes.data.to_amount, preview.grossAmount),
+      }),
     );
     const payout = await this.skyewallet.createPayout({
       type: "fiat",
@@ -533,7 +530,7 @@ export class TransactionService {
       bank_code: transaction.bankDestination.bankCode,
       account_number: transaction.bankDestination.accountNumber,
       pay_reference: payoutReference,
-      account_name: transaction.bankDestination.accountName
+      account_name: transaction.bankDestination.accountName,
     });
 
     await this.transactions.update(transaction.id, (current) => {
@@ -549,25 +546,23 @@ export class TransactionService {
           id: payout.data.transaction_id,
           status: payout.data.status,
           amount: Number(payout.data.amount),
-          currency: payout.data.currency
+          currency: payout.data.currency,
         },
         references: appendReferences(current.references, [
           { type: "pay_reference", value: payout.data.pay_reference ?? payoutReference },
           { type: "swap", value: swapRes.data.swap_id },
-          { type: "transfer", value: payout.data.transaction_id }
+          { type: "transfer", value: payout.data.transaction_id },
         ]),
         error:
-          payout.data.status === "failed"
-            ? "Skyewallet payout could not be initiated"
-            : undefined,
-        lastEvent: event
+          payout.data.status === "failed" ? "Skyewallet payout could not be initiated" : undefined,
+        lastEvent: event,
       };
     });
   }
 
   private async startBankToCryptoSwap(
     transaction: BankToCryptoTransaction,
-    event: SkyewalletWebhookEvent
+    event: SkyewalletWebhookEvent,
   ) {
     const payoutReference = buildPayReference(transaction.id, "payout");
     const receivedAmount =
@@ -576,15 +571,15 @@ export class TransactionService {
     const quoteRes = await this.skyewallet.getSwapQuote({
       from_currency: "NGN",
       to_currency: transaction.payoutDestination.currency,
-      from_amount: formatAmount(receivedAmount)
+      from_amount: formatAmount(receivedAmount),
     });
-    const preview = this.quotes.buildBankToCryptoQuote(quoteRes.data, receivedAmount);
+    const preview = buildBankToCryptoQuote(quoteRes.data, receivedAmount);
     const swapRes = await this.skyewallet.executeSwap(quoteRes.data.quote_id);
     const lockedQuote = lockQuote(
       this.quotes.reviseQuoteFromSwap(transaction.direction, preview, {
         fromAmount: toNumber(swapRes.data.from_amount, preview.fromAmount),
-        toAmount: toNumber(swapRes.data.to_amount, preview.grossAmount)
-      })
+        toAmount: toNumber(swapRes.data.to_amount, preview.grossAmount),
+      }),
     );
     const payout = await this.skyewallet.createPayout({
       type: "crypto",
@@ -592,7 +587,7 @@ export class TransactionService {
       currency: transaction.payoutDestination.currency,
       address: transaction.payoutDestination.address,
       network: transaction.payoutDestination.network,
-      pay_reference: payoutReference
+      pay_reference: payoutReference,
     });
 
     await this.transactions.update(transaction.id, (current) => {
@@ -608,27 +603,29 @@ export class TransactionService {
           id: payout.data.transaction_id,
           status: payout.data.status,
           amount: Number(payout.data.amount),
-          currency: payout.data.currency
+          currency: payout.data.currency,
         },
         references: appendReferences(current.references, [
           { type: "pay_reference", value: payout.data.pay_reference ?? payoutReference },
           { type: "swap", value: swapRes.data.swap_id },
-          { type: "transfer", value: payout.data.transaction_id }
+          { type: "transfer", value: payout.data.transaction_id },
         ]),
         error:
-          payout.data.status === "failed"
-            ? "Skyewallet payout could not be initiated"
-            : undefined,
-        lastEvent: event
+          payout.data.status === "failed" ? "Skyewallet payout could not be initiated" : undefined,
+        lastEvent: event,
       };
     });
   }
 
   private async findMatchingTransaction(event: SkyewalletWebhookEvent) {
     const values = extractReferenceValues(event);
+    const statuses =
+      event.event === "payment.received" ? (["awaiting_payment"] as const) : undefined;
 
     for (const value of values) {
-      const match = await this.transactions.findByReferenceValues([value]);
+      const match = await this.transactions.findByReferenceValues([value], {
+        statuses: statuses ? [...statuses] : undefined,
+      });
       if (match) {
         return match;
       }
@@ -636,10 +633,32 @@ export class TransactionService {
 
     return null;
   }
+
+  private async assertWithinLimits(
+    ownerUserId: string,
+    level: number,
+    currency: string,
+    amount: number,
+  ) {
+    const limits = getLevelLimits(level, currency);
+
+    if (amount > limits.maxTransactionAmount) {
+      throw new Error(
+        `Amount exceeds your level limit of ${limits.maxTransactionAmount}. Upgrade your account to increase limits.`,
+      );
+    }
+
+    const dailyVolume = await this.transactions.getDailyVolumeForOwner(ownerUserId, currency);
+    if (dailyVolume + amount > limits.maxDailyAmount) {
+      throw new Error(
+        `Daily limit of ${limits.maxDailyAmount} exceeded. Upgrade your account to increase limits.`,
+      );
+    }
+  }
 }
 
 function profileToCustomerProfile(
-  profile: CustomerProfileRow
+  profile: CustomerProfileRow,
 ): CryptoToBankTransaction["customer"] {
   return {
     firstName: profile.firstName,
@@ -651,19 +670,19 @@ function profileToCustomerProfile(
     ninVerified: profile.ninVerified,
     phoneVerified: profile.phoneVerified,
     addressVerified: profile.addressVerified,
-    bvn: profile.bvn ?? undefined,
-    nin: profile.nin ?? undefined,
+    bvn: maskSensitiveIdentifier(profile.bvn),
+    nin: maskSensitiveIdentifier(profile.nin),
     address: profile.address ?? undefined,
     city: profile.city ?? undefined,
     state: profile.state ?? undefined,
     country: profile.country,
-    dateOfBirth: profile.dateOfBirth ?? undefined
+    dateOfBirth: profile.dateOfBirth ?? undefined,
   };
 }
 
 function appendReferences(
   current: TransactionReference[],
-  next: TransactionReference[]
+  next: TransactionReference[],
 ): TransactionReference[] {
   const deduped = new Map<string, TransactionReference>();
 
@@ -689,7 +708,7 @@ function buildPayReference(transactionId: string, stage: "payin" | "payout") {
 function lockQuote(quote: QuotePreview): QuotePreview {
   return {
     ...quote,
-    expiresAt: undefined
+    expiresAt: undefined,
   };
 }
 
@@ -707,5 +726,8 @@ function statusFromPayoutStatus(status: string) {
 
 function getLevelLimits(level: number, currency: string) {
   const currencyLimits = currencyLevelLimits[currency];
-  return currencyLimits?.[level as keyof typeof currencyLimits] ?? currencyLimits?.[0] ?? { maxTransactionAmount: Infinity, maxDailyAmount: Infinity };
+  return (
+    currencyLimits?.[level as keyof typeof currencyLimits] ??
+    currencyLimits?.[0] ?? { maxTransactionAmount: Infinity, maxDailyAmount: Infinity }
+  );
 }

@@ -12,12 +12,21 @@ loadEnv({ path: resolve(rootDir, ".env"), override: true });
 const command = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const result = spawnSync(
   command,
-  ["exec", "auth", "generate", "--config", "./src/lib/auth.ts", "--output", "./src/db/auth-schema.ts", "-y"],
+  [
+    "exec",
+    "auth",
+    "generate",
+    "--config",
+    "./src/lib/auth.ts",
+    "--output",
+    "./src/db/auth-schema.ts",
+    "-y",
+  ],
   {
     cwd: rootDir,
     env: process.env,
-    stdio: "inherit"
-  }
+    stdio: "inherit",
+  },
 );
 
 if (result.error) {

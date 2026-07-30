@@ -3,98 +3,98 @@ import { Link } from "@tanstack/react-router";
 const storySteps = [
   {
     title: "You start with crypto",
-    text: "Your money lives on-chain and is ready to move."
+    text: "Your money lives on-chain and is ready to move.",
   },
   {
     title: "Real life asks for fiat",
-    text: "A merchant, POS agent, or friend still wants a bank transfer."
+    text: "A merchant, POS agent, or friend still wants a bank transfer.",
   },
   {
     title: "trassfa bridges both",
-    text: "The sender pays one way and the receiver gets value the way they prefer."
-  }
+    text: "The sender pays one way and the receiver gets value the way they prefer.",
+  },
 ];
 
 const flows = [
   {
     title: "Pay out from your wallet",
-    text: "Create a route that starts in crypto and lands as a bank transfer."
+    text: "Create a route that starts in crypto and lands as a bank transfer.",
   },
   {
     title: "Turn bank transfers into crypto",
-    text: "Accept fiat and settle directly into a wallet without a manual swap."
+    text: "Accept fiat and settle directly into a wallet without a manual swap.",
   },
   {
     title: "Share a crypto route for any bank account",
-    text: "Let someone send crypto while the bank account owner receives fiat."
+    text: "Let someone send crypto while the bank account owner receives fiat.",
   },
   {
     title: "Create a bank account for any wallet",
-    text: "Generate a virtual account that receives fiat and pays out in crypto."
-  }
+    text: "Generate a virtual account that receives fiat and pays out in crypto.",
+  },
 ];
 
 const scenarios = [
   {
     title: "Dinner bill",
-    text: "You hold stablecoins. The restaurant wants a transfer. trassfa closes the bill cleanly."
+    text: "You hold stablecoins. The restaurant wants a transfer. trassfa closes the bill cleanly.",
   },
   {
     title: "POS cash-out",
-    text: "Move from wallet balance to cash through familiar local rails."
+    text: "Move from wallet balance to cash through familiar local rails.",
   },
   {
     title: "Urgent send",
-    text: "When someone needs money fast, create the route that fits the moment."
+    text: "When someone needs money fast, create the route that fits the moment.",
   },
   {
     title: "Urgent receive",
-    text: "Take a bank transfer and collect the value in crypto instead."
+    text: "Take a bank transfer and collect the value in crypto instead.",
   },
   {
     title: "Bank details, crypto outcome",
-    text: "Share a normal account destination and settle the result to a wallet."
+    text: "Share a normal account destination and settle the result to a wallet.",
   },
   {
     title: "Crypto address, bank outcome",
-    text: "Receive from crypto and deliver the final value into a bank account."
-  }
+    text: "Receive from crypto and deliver the final value into a bank account.",
+  },
 ];
 
 const supportGroups = [
   {
     title: "Networks",
     text: "Built for the chains people already move with.",
-    items: ["TRON", "Solana"]
+    items: ["TRON", "Solana"],
   },
   {
     title: "Currencies",
     text: "The current rails cover both crypto assets and local fiat settlement.",
-    items: ["USDT", "USDC", "TRX", "SOL", "NGN"]
-  }
+    items: ["USDT", "USDC", "TRX", "SOL", "NGN"],
+  },
 ];
 
 const faqs = [
   {
     question: "What story does trassfa solve?",
     answer:
-      "It solves the awkward moment when one side has crypto and the other side wants fiat, or the reverse. trassfa creates the route between both."
+      "It solves the awkward moment when one side has crypto and the other side wants fiat, or the reverse. trassfa creates the route between both.",
   },
   {
     question: "Can I start from either a wallet or a bank transfer?",
     answer:
-      "Yes. You can begin from crypto and settle to bank, or begin from bank and settle to crypto."
+      "Yes. You can begin from crypto and settle to bank, or begin from bank and settle to crypto.",
   },
   {
     question: "Who is this built for?",
     answer:
-      "It fits everyday payment moments: merchants, quick transfers, POS cash-out, family support, and direct wallet settlement."
+      "It fits everyday payment moments: merchants, quick transfers, POS cash-out, family support, and direct wallet settlement.",
   },
   {
     question: "What rails are live in the current scope?",
     answer:
-      "The current product supports TRON and Solana flows, with USDT, USDC, TRX, SOL, and NGN in scope."
-  }
+      "The current product supports TRON and Solana flows, with USDT, USDC, TRX, SOL, and NGN in scope.",
+  },
 ];
 
 export function LandingPage() {
@@ -105,8 +105,8 @@ export function LandingPage() {
           <span className="eyebrow">From wallet to real life</span>
           <h1>Your crypto should still work when the other side wants fiat.</h1>
           <p className="hero-text">
-            A dinner bill. A POS cash-out. An urgent transfer. trassfa turns these
-            everyday moments into simple routes between on-chain wallets and bank rails.
+            A dinner bill. A POS cash-out. An urgent transfer. trassfa turns these everyday moments
+            into simple routes between on-chain wallets and bank rails.
           </p>
           <div className="hero-actions">
             <Link to="/app/send" className="button button-primary">
@@ -139,7 +139,9 @@ export function LandingPage() {
               <div className="mockup-story">
                 <span className="label">Scenario</span>
                 <h2>Restaurant payout</h2>
-                <p>The customer pays from a wallet. The merchant receives a normal bank transfer.</p>
+                <p>
+                  The customer pays from a wallet. The merchant receives a normal bank transfer.
+                </p>
               </div>
 
               <div className="mockup-route">
@@ -262,8 +264,8 @@ export function LandingPage() {
           <span className="eyebrow">Start the route</span>
           <h2>Choose where value starts and where it should land.</h2>
           <p>
-            trassfa handles the bridge so the sender and receiver do not have to think
-            about the mismatch between crypto and fiat.
+            trassfa handles the bridge so the sender and receiver do not have to think about the
+            mismatch between crypto and fiat.
           </p>
         </div>
         <div className="cta-actions">

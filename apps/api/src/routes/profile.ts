@@ -2,12 +2,17 @@ import { Hono } from "hono";
 import type { AppVariables } from "../lib/app-context.js";
 import { KycService } from "../services/kyc-service.js";
 import { TransactionRepository } from "../repositories/transaction-repository.js";
-import { currencyLevelLimits, levelPermissions } from "../config/limits.js";
+import { currencyLevelLimits, levelPermissions, type LevelPermissions } from "../config/limits.js";
 import { requireAuth, requireAuthenticatedUser } from "./middleware.js";
+
+const defaultPermissions: LevelPermissions = {
+  allowPermanentAddress: false,
+  allowPermanentAccount: false,
+};
 
 export function createProfileRoutes(
   kycService: KycService,
-  transactionRepository: TransactionRepository
+  transactionRepository: TransactionRepository,
 ) {
   const app = new Hono<{
     Variables: AppVariables;
@@ -39,8 +44,8 @@ export function createProfileRoutes(
         city: profile.city,
         state: profile.state,
         country: profile.country,
-        dateOfBirth: profile.dateOfBirth
-      }
+        dateOfBirth: profile.dateOfBirth,
+      },
     });
   });
 
@@ -58,18 +63,40 @@ export function createProfileRoutes(
     return c.json({
       level,
       limits,
-      permissions
+      permissions,
     });
   });
 
   app.get("/api/profile/permanent-address", async (c) => {
     const user = requireAuthenticatedUser(c);
+    const profile = await transactionRepository.getCustomerProfile(user.id);
+    const level = (profile?.level ?? 0) as keyof typeof levelPermissions;
+    const permissions = levelPermissions[level] ?? defaultPermissions;
+
+    if (!permissions.allowPermanentAddress) {
+      return c.json(
+        { error: "Permanent address is not available at your verification level" },
+        403,
+      );
+    }
+
     const address = await kycService.getPermanentAddress(user.id);
     return c.json({ address });
   });
 
   app.get("/api/profile/permanent-account", async (c) => {
     const user = requireAuthenticatedUser(c);
+    const profile = await transactionRepository.getCustomerProfile(user.id);
+    const level = (profile?.level ?? 0) as keyof typeof levelPermissions;
+    const permissions = levelPermissions[level] ?? defaultPermissions;
+
+    if (!permissions.allowPermanentAccount) {
+      return c.json(
+        { error: "Permanent account is not available at your verification level" },
+        403,
+      );
+    }
+
     const account = await kycService.getPermanentAccount(user.id);
     return c.json({ account });
   });

@@ -1,8 +1,11 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { secureHeaders } from "hono/secure-headers";
 import type { AppVariables } from "./lib/app-context.js";
 import { auth } from "./lib/auth.js";
 import { env } from "./lib/config.js";
+import { getPublicErrorMessage } from "./lib/errors.js";
+import { createRateLimiter, getClientIp } from "./lib/rate-limit.js";
 import { SkyewalletClient } from "./lib/skyewallet.js";
 import { TransactionRepository } from "./repositories/transaction-repository.js";
 import { WebhookEventRepository } from "./repositories/webhook-event-repository.js";
@@ -21,13 +24,34 @@ import { TransactionService } from "./services/transaction-service.js";
 import { WebhookService } from "./services/webhook-service.js";
 import { sessionMiddleware } from "./routes/middleware.js";
 
+const authRateLimit = createRateLimiter({
+  keyPrefix: "auth",
+  limit: 20,
+  windowMs: 60_000,
+  keyResolver: getClientIp,
+});
+
+const webhookRateLimit = createRateLimiter({
+  keyPrefix: "webhook",
+  limit: 120,
+  windowMs: 60_000,
+  keyResolver: getClientIp,
+});
+
+const apiRateLimit = createRateLimiter({
+  keyPrefix: "api",
+  limit: 180,
+  windowMs: 60_000,
+  keyResolver: (c) => c.get("user")?.id ?? getClientIp(c),
+});
+
 export function createApp() {
   const app = new Hono<{
     Variables: AppVariables;
   }>();
   const skyewallet = new SkyewalletClient({
     apiKey: env.SKYEWALLET_API_KEY,
-    baseUrl: env.SKYEWALLET_BASE_URL
+    baseUrl: env.SKYEWALLET_BASE_URL,
   });
   const transactionRepository = new TransactionRepository();
   const webhookEventRepository = new WebhookEventRepository();
@@ -38,15 +62,17 @@ export function createApp() {
     transactionRepository,
     skyewallet,
     quoteService,
-    bankService
+    bankService,
   );
   const webhookService = new WebhookService(
     webhookEventRepository,
     transactionService,
-    env.SKYEWALLET_WEBHOOK_SECRET
+    env.SKYEWALLET_WEBHOOK_SECRET,
   );
 
   webhookService.resetStaleProcessing().catch(console.error);
+
+  app.use("*", secureHeaders());
 
   app.use(
     "*",
@@ -57,17 +83,20 @@ export function createApp() {
         "Authorization",
         "x-skyewallet-signature",
         "x-skyewallet-event",
-        "x-skyewallet-timestamp"
+        "x-skyewallet-timestamp",
       ],
       allowMethods: ["GET", "POST", "OPTIONS"],
       exposeHeaders: ["Content-Length"],
-      credentials: true
-    })
+      credentials: true,
+    }),
   );
 
+  app.use("/webhooks/*", webhookRateLimit);
   app.route("/", createWebhookRoutes(webhookService));
 
   app.use("/api/*", sessionMiddleware);
+  app.use("/api/*", apiRateLimit);
+  app.use("/api/auth/*", authRateLimit);
   app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
   app.route("/", createHealthRoutes());
@@ -78,15 +107,13 @@ export function createApp() {
   app.route("/", createKycRoutes(kycService));
   app.route("/", createProfileRoutes(kycService, transactionRepository));
 
-
-
   app.onError((error, c) => {
     console.error(error);
     return c.json(
       {
-        error: error.message
+        error: getPublicErrorMessage(error),
       },
-      500
+      500,
     );
   });
 

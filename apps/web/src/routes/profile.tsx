@@ -13,13 +13,7 @@ import {
 } from "../lib/api";
 import { authClient } from "../lib/auth-client";
 
-function SettingRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function SettingRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="summary-row">
       <span>{label}</span>
@@ -28,13 +22,7 @@ function SettingRow({
   );
 }
 
-function VerificationPill({
-  label,
-  verified,
-}: {
-  label: string;
-  verified: boolean;
-}) {
+function VerificationPill({ label, verified }: { label: string; verified: boolean }) {
   return (
     <div className={verified ? "verification-pill verified" : "verification-pill pending"}>
       <span>{label}</span>
@@ -43,13 +31,7 @@ function VerificationPill({
   );
 }
 
-function PermissionPill({
-  label,
-  enabled,
-}: {
-  label: string;
-  enabled: boolean;
-}) {
+function PermissionPill({ label, enabled }: { label: string; enabled: boolean }) {
   return (
     <div className={enabled ? "verification-pill verified" : "verification-pill pending"}>
       <span>{label}</span>
@@ -107,12 +89,7 @@ export function ProfilePage() {
     setLoading(true);
     setError(null);
 
-    Promise.all([
-      getProfile(),
-      getProfileLimits(),
-      getPermanentAddress(),
-      getPermanentAccount(),
-    ])
+    Promise.all([getProfile(), getProfileLimits(), getPermanentAddress(), getPermanentAccount()])
       .then(([profileResponse, limitsResponse, addressResponse, accountResponse]) => {
         setProfile(profileResponse.profile);
         setLimits(limitsResponse);
@@ -128,12 +105,7 @@ export function ProfilePage() {
   }
 
   if (!session?.user) {
-    return (
-      <AuthRequired
-        title="Profile"
-        message="Sign in to view your profile and KYC details."
-      />
-    );
+    return <AuthRequired title="Profile" message="Sign in to view your profile and KYC details." />;
   }
 
   async function handleSignOut() {
@@ -209,11 +181,7 @@ export function ProfilePage() {
                 <span className="section-label">Limits</span>
                 <div className="mobile-summary-list">
                   {Object.entries(limits.limits).map(([currency, value]) => (
-                    <SettingRow
-                      key={currency}
-                      label={currency}
-                      value={formatLimitValue(value)}
-                    />
+                    <SettingRow key={currency} label={currency} value={formatLimitValue(value)} />
                   ))}
                 </div>
               </section>

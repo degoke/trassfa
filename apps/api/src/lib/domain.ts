@@ -60,7 +60,7 @@ export type QuotePreview = {
   fromAmount: number;
   grossAmount: number;
   providerFee: number;
-  linkpayFee: number;
+  platformFee: number;
   netAmount: number;
   rate: number;
   expiresAt?: string;
@@ -108,12 +108,7 @@ export type SkyewalletWebhookEvent = {
   timestamp: string | number;
 };
 
-export type WebhookEventStatus =
-  | "pending"
-  | "processing"
-  | "processed"
-  | "ignored"
-  | "failed";
+export type WebhookEventStatus = "pending" | "processing" | "processed" | "ignored" | "failed";
 
 export type WebhookEventRecord = {
   id: number;
@@ -188,7 +183,7 @@ export type BankToCryptoTransaction = {
   error?: string;
 };
 
-export type LinkPayTransaction = CryptoToBankTransaction | BankToCryptoTransaction;
+export type TrassfaTransaction = CryptoToBankTransaction | BankToCryptoTransaction;
 
 export type DepositBankDestination = {
   direction: TransactionDirection;

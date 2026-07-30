@@ -29,18 +29,10 @@ export function TransactionListItem({ tx }: { tx: Transaction }) {
     : formatAsset(tx.quote.netAmount, tx.payoutDestination.currency);
 
   return (
-    <Link
-      to="/app/transactions/$id"
-      params={{ id: tx.id }}
-      className="transaction-card"
-    >
+    <Link to="/app/transactions/$id" params={{ id: tx.id }} className="transaction-card">
       <div className="transaction-card-row">
-        <span className="transaction-card-kind">
-          {getTransactionDirectionLabel(tx)}
-        </span>
-        <span className={`status-badge status-${displayStatus}`}>
-          {statusLabel(displayStatus)}
-        </span>
+        <span className="transaction-card-kind">{getTransactionDirectionLabel(tx)}</span>
+        <span className={`status-badge status-${displayStatus}`}>{statusLabel(displayStatus)}</span>
       </div>
       <div className="transaction-card-values">
         <strong>{primaryValue}</strong>

@@ -1,0 +1,108 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap");
+
+:root {
+  font-family: "Manrope", sans-serif;
+  color: #171717;
+  background: #f6f1e8;
+  line-height: 1.5;
+  font-weight: 400;
+  --bg: #f6f1e8;
+  --paper: #fffdf8;
+  --ink: #171717;
+  --muted: #5d5a54;
+  --line: #d6cebf;
+  --yellow: #f1c84d;
+  --blue: #7da4e8;
+  --green: #8db487;
+  --orange: #ef8a67;
+  --sand: #ece0cb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+.brand {
+  font-family: "Sora", sans-serif;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 auto 1.75rem;
+  padding: 1rem 1.1rem;
+  max-width: 1220px;
+  border: 1px solid var(--line);
+  background: rgba(255, 253, 248, 0.95);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+}
+
+.brand-logo {
+  height: 28px;
+  width: auto;
+}
+
+.site-nav,
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.site-nav a,
+.user-pill {
+  padding: 0.45rem 0.7rem;
+  color: rgba(23, 23, 23, 0.7);
+}
+
+.site-nav a.active,
+.site-nav a:hover {
+  background: #ede5d7;
+  color: var(--ink);
+}
+
+.user-pill {
+  background: #ede5d7;
+  font-size: 0.9rem;
+}
