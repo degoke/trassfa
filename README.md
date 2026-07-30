@@ -195,4 +195,3 @@ Source available under the [trassfa Source Available License](LICENSE).
 - Development, testing, and evaluation are always allowed.
 - Non-commercial production use is allowed.
 - Commercial production use requires a separate written license.
-- There is **no expiry date** — the project does not automatically relicense to Apache or any other license.
